@@ -51,7 +51,6 @@ public class Main {
 	private static volatile Thread mainThread;
 	
 	public static void main(String[] args) {
-
 		mainThread = Thread.currentThread();
 		StatsTracker stats = StatsTracker.getInstance();
 
@@ -131,6 +130,13 @@ public class Main {
 		if (Options.startAddress.getValue() > 0) {
 			logger.verbose("Setting start address to 0x" + Long.toHexString(Options.startAddress.getValue()));
 			program.setEntryAddress(new AbsoluteAddress(Options.startAddress.getValue()));
+		} else if(!Options.startSymbol.getValue().isEmpty()) {
+			for(ExportedSymbol s : program.getSymbols()) {
+				if(s.getName().equalsIgnoreCase(Options.startSymbol.getValue())) {
+					program.setEntryAddress(s.getAddress());
+					break;
+				}
+			}
 		}
 
 		// Add surrounding "%DF := 1; call entrypoint; halt;" 

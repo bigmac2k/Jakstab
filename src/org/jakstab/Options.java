@@ -76,6 +76,7 @@ public class Options {
 
 	public static JOption<String> sslFilename = JOption.create("ssl", "file", jakstabHome + "/ssl/pentium.ssl", "Use <file> instead of pentium.ssl.");
 	public static JOption<Long> startAddress = JOption.create("a", "address", -1L, "Start analysis at given virtual address.");
+	public static JOption<String> startSymbol = JOption.create("sym", "symbol", "", "Start analysis at given symbol.");
 	public static JOption<Boolean> wdm = JOption.create("wdm", "WDM mode, export main function as DriverMain.");
 	public static JOption<Boolean> allEdges = JOption.create("all-edges", "Generate a true over-approximation and add edges to all possible addresses when over-approximating a jump (very slow!).");
 	public static JOption<Boolean> dumpStates = JOption.create("s", "Output all reached states after analysis.");	
@@ -94,7 +95,7 @@ public class Options {
 	public static JOption<Boolean> summarizeRep = JOption.create("summarize-rep", "Use summarizing transformer for string instructions.");
 	public static JOption<Boolean> basicBlocks = JOption.create("basicblocks", "Build CFA from basic-blocks instead of single statements.");
 	public static JOption<Integer> verbosity = JOption.create("v", "level", 3, "Set verbosity to value. Default is 3.");
-	public static JOption<Integer> timeout = JOption.create("timeout", "t", -1, "Set timeout in seconds for the analysis.");
+	public static JOption<Integer> timeout = JOption.create("timeout", "t", -1, "Set timeout in seconds for the anaSlysis.");
 	public static JOption<Integer> procedureAbstraction = JOption.create("procedures", "n", 0, "Level of procedure assumptions: " +
 			"0: Pessimistic: No assumptions, treat calls and returns as jumps (default). " + 
 			"1: Semi-optimistic: Abstract unknown calls according to ABI contract. " + 
