@@ -42,7 +42,7 @@ public class StatsTracker {
 	
 	private StatsTracker() {
 		super();
-		logger = Logger.getLogger(ExpressionSimplifier.class);
+		logger = Logger.getLogger(StatsTracker.class);
 		statsBuilder = new StringBuffer();
 		namedVals = new HashMap<String, String>();
 	}

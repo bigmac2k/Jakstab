@@ -140,6 +140,7 @@ public class ControlFlowReconstruction implements Algorithm {
 		for (int i=0; i<Options.cpas.getValue().length(); i++) {
 			
 			char shortHand = Options.cpas.getValue().charAt(i);
+			if(shortHand == ',') continue;
 			
 			// Special handling for trace replay analysis that really creates multiple CPAs
 			if (shortHand == 't') {

@@ -28,6 +28,7 @@ import org.jakstab.analysis.*;
 import org.jakstab.analysis.composite.CompositeState;
 import org.jakstab.analysis.explicit.BasedNumberValuation;
 import org.jakstab.analysis.explicit.BoundedAddressTracking;
+import org.jakstab.analysis.explicit.BoundedSetTracking;
 import org.jakstab.analysis.procedures.ProcedureAnalysis;
 import org.jakstab.analysis.procedures.ProcedureState;
 import org.jakstab.asm.*;
@@ -131,12 +132,8 @@ public class Main {
 			logger.verbose("Setting start address to 0x" + Long.toHexString(Options.startAddress.getValue()));
 			program.setEntryAddress(new AbsoluteAddress(Options.startAddress.getValue()));
 		} else if(!Options.startSymbol.getValue().isEmpty()) {
-			for(ExportedSymbol s : program.getSymbols()) {
-				if(s.getName().equalsIgnoreCase(Options.startSymbol.getValue())) {
-					program.setEntryAddress(s.getAddress());
-					break;
-				}
-			}
+			String start = Options.startSymbol.getValue();
+			program.setEntrySymbol(start);
 		}
 
 		// Add surrounding "%DF := 1; call entrypoint; halt;" 
@@ -287,7 +284,10 @@ public class Main {
 			stats.record(Options.summarizeRep.getValue() ? "y" : "n" );
 			stats.record(BasedNumberValuation.ExplicitPrintfArgs);
 			stats.record(BasedNumberValuation.OverAppPrintfArgs);
-			
+			stats.record(BoundedSetTracking.kSetBound.getValue());
+			stats.record(Options.startAddress.getValue());
+			stats.record(Options.startSymbol.getValue());
+
 			stats.print();
 
 			ProgramGraphWriter graphWriter = new ProgramGraphWriter(program);
@@ -381,7 +381,8 @@ public class Main {
 					graphWriter.writeCallGraph(baseFileName + "_callgraph", callGraph);
 			}
 
-			 
+
+			stats.print();
 
 			// Kills the keypress-monitor-thread.
 			try {

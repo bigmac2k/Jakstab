@@ -46,7 +46,7 @@ import org.jakstab.util.FastSet;
  * @author Johannes Kinder
  */
 public final class Program {
-	
+
 	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(Program.class);
 	private static Program programInstance;
@@ -59,7 +59,7 @@ public final class Program {
 	public static Program getProgram() {
 		return programInstance;
 	}
-	
+
 	/**
 	 * Initially creates the Program object.
 	 *  
@@ -84,10 +84,10 @@ public final class Program {
 	private Set<Location> unresolvedBranches;
 	private StubProvider stubLibrary;
 	private Harness harness;
-	
+
 	public enum TargetOS {WINDOWS, LINUX, UNKNOWN};
 	private TargetOS targetOS;
-	
+
 	private Program(Architecture arch) {
 		this.arch = arch;
 		this.targetOS = TargetOS.UNKNOWN;
@@ -98,10 +98,10 @@ public final class Program {
 		cfa = new FastSet<CFAEdge>();
 		exportedSymbols = new HashMap<String, ExportedSymbol>();
 		unresolvedSymbols = new FastSet<UnresolvedSymbol>();
-		
+
 		unresolvedBranches = new FastSet<Location>();
 	}
-	
+
 	/**
 	 * Loads the module containing the main function. This function should be called last
 	 * for correct symbol resolution.
@@ -118,7 +118,7 @@ public final class Program {
 		installStubs();
 		return module;
 	}
-	
+
 	/**
 	 * Loads a secondary (library or stub) module for analysis. Automatically determines 
 	 * the correct file type.
@@ -148,15 +148,15 @@ public final class Program {
 				}
 			}
 		}
-		
+
 		for (ExecutableImage existingModule : modules) {
 			if (existingModule.getMaxAddress().getValue() >= module.getMinAddress().getValue() &&
 					existingModule.getMinAddress().getValue() <= module.getMaxAddress().getValue()) {
 				throw new RuntimeException("Virtual addresses of modules overlap!");
 			}
 		}
-		
-		
+
+
 		modules.add(module);
 		unresolvedSymbols.addAll(module.getUnresolvedSymbols());
 		for (ExportedSymbol symbol : module.getExportedSymbols()) {
@@ -165,7 +165,7 @@ public final class Program {
 		resolveSymbols();
 		return module;
 	}
-	
+
 	private String removeDecoration(String s) {
 		if (s.charAt(0) == '@' || s.charAt(0) == '_')
 			s = s.substring(1);
@@ -174,7 +174,7 @@ public final class Program {
 			s = s.substring(0, i); 
 		return s;
 	}
-	
+
 	/**
 	 * Resolves symbols between the loaded modules. 
 	 */
@@ -183,7 +183,7 @@ public final class Program {
 		while (sIter.hasNext()) {
 			UnresolvedSymbol unresolvedSymbol = sIter.next();
 			ExportedSymbol symbol = exportedSymbols.get(removeDecoration(unresolvedSymbol.getName()));
-			
+
 			if (symbol != null) {
 				logger.debug("Resolving symbol " + unresolvedSymbol.getName());
 				unresolvedSymbol.resolve(symbol.getAddress());
@@ -191,7 +191,7 @@ public final class Program {
 			}
 		}
 	}
-	
+
 	/**
 	 * Returns the address of the given procedure within the given library. Procedures
 	 * present within the analyzed modules are given precedence over stub functions.
@@ -208,7 +208,7 @@ public final class Program {
 			return stubLibrary.resolveSymbol(library, procedure);
 		}
 	}
-	
+
 	/**
 	 * For all unresolved symbols, install simple stubs.
 	 */
@@ -218,7 +218,7 @@ public final class Program {
 		} else if (mainModule instanceof ELFModule){
 			stubLibrary = new LinuxStubLibrary(arch);
 		}
-		
+
 		Iterator<UnresolvedSymbol> sIter = unresolvedSymbols.iterator();
 		while (sIter.hasNext()) {
 			UnresolvedSymbol unresolvedSymbol = sIter.next();
@@ -229,11 +229,11 @@ public final class Program {
 				sIter.remove();
 			}
 		}
-		
+
 		if (!unresolvedSymbols.isEmpty()) 
 			logger.warn("Unresolved symbols remaining: " + unresolvedSymbols);
 	}
-	
+
 	/**
 	 * Install a harness that sets up the symbolic environment before calling main
 	 * and provides a return point with a termination statement.
@@ -244,7 +244,7 @@ public final class Program {
 		this.harness = harness;
 		harness.install(this);
 	}
-	
+
 	/**
 	 * Set the program entry point to the given label.
 	 * @param label the new entry point
@@ -260,7 +260,7 @@ public final class Program {
 	public void setEntryAddress(AbsoluteAddress entryAddress) {
 		setStart(new Location(entryAddress));
 	}
-	
+
 	/**
 	 * Get the main module.  
 	 * @return the main module
@@ -268,7 +268,7 @@ public final class Program {
 	public ExecutableImage getMainModule() {
 		return mainModule;
 	}
-	
+
 	/**
 	 * Get the module that contains the specified virtual address at runtime.
 	 * @param a a virtual address
@@ -281,11 +281,11 @@ public final class Program {
 		}
 		return null;
 	}
-	
+
 	public Iterator<AbsoluteAddress> codeAddressIterator() {
 		return getMainModule().codeBytesIterator();
 	}
-	
+
 	/**
 	 * Get all statements in the Program.
 	 * 
@@ -325,7 +325,7 @@ public final class Program {
 		}
 		return statementMap.get(label);
 	}
-	
+
 	/**
 	 * Stores a statement in the program. If a statement already exists with the same
 	 * label, it is replaced.
@@ -340,7 +340,7 @@ public final class Program {
 		}
 		statementMap.put(stmt.getLabel(), stmt);
 	}
-	
+
 	public boolean containsLabel(Location label) {
 		return statementMap.containsKey(label);
 	}
@@ -352,11 +352,11 @@ public final class Program {
 	public final int getInstructionCount() {
 		return assemblyMap.size();
 	}
-	
+
 	public Harness getHarness() {
 		return harness;
 	}
-	
+
 	/**
 	 * Gets the assembly instruction at the specified virtual address.
 	 * @param address a virtual address
@@ -371,7 +371,7 @@ public final class Program {
 			// No real instructions in prologue/epilogue
 			if (harness.contains(address) || address.getValue() >= StubProvider.STUB_BASE)
 				return null;
-			
+
 			ExecutableImage module = getModule(address);
 
 			long fp = -1;
@@ -412,7 +412,7 @@ public final class Program {
 		//logger.info(addr + " " + instr.toString(addr.getValue(), new DummySymbolFinder()));
 		return assemblyMap.put(addr, instr) == null;
 	}
-	
+
 	/**
 	 * Get the string representation of the assembly instruction at the given address.
 	 * @param addr a virtual address
@@ -423,7 +423,7 @@ public final class Program {
 		if (instr == null) return "NON_EXISTENT";
 		return instr.toString(addr.getValue(), symbolFinder(addr));
 	}
-	
+
 	public String getSymbolFor(Location label) {
 		SymbolFinder symFinder = symbolFinder(label.getAddress());
 		if (symFinder.hasSymbolFor(label.getAddress())) {
@@ -432,19 +432,19 @@ public final class Program {
 			return label.toString();
 		}
 	}
-	
+
 	public String getSymbolFor(AbsoluteAddress addr) {
 		return symbolFinder(addr).getSymbolFor(addr);
 	}
-	
+
 	private SymbolFinder symbolFinder(AbsoluteAddress addr) {
 		if (addr.getValue() >= StubProvider.STUB_BASE)
 			return stubLibrary.getSymbolFinder();
-		
+
 		ExecutableImage module = getModule(addr);
 		return (module == null) ? new DummySymbolFinder() : module.getSymbolFinder();
 	}
-	
+
 	public Set<Location> getUnresolvedBranches() {
 		return unresolvedBranches;
 	}
@@ -477,15 +477,15 @@ public final class Program {
 		return result;
 	}
 
-	
+
 	public Architecture getArchitecture() {
 		return arch;
 	}
-	
+
 	public Collection<ExportedSymbol> getSymbols() {
 		return exportedSymbols.values();
 	}
-	
+
 	public Set<CFAEdge> getCFA() {
 		return Collections.unmodifiableSet(cfa);
 	}
@@ -497,12 +497,12 @@ public final class Program {
 	public Location getStart() {
 		return start;
 	}
-	
+
 	public int countIndirectBranches() {
 		int res = 0;
 		for (Map.Entry<AbsoluteAddress, Instruction> entry : assemblyMap.entrySet()) {
 			Instruction instr = entry.getValue();
-			
+
 			if (instr instanceof BranchInstruction) {
 				BranchInstruction branch = (BranchInstruction)instr;
 				if (branch.isIndirect()) {
@@ -524,5 +524,15 @@ public final class Program {
 			}
 		}
 		return res;
+	}
+
+	public AbsoluteAddress setEntrySymbol(String start) {
+		for(ExportedSymbol s : this.getSymbols()) {
+			if(s.getName().equalsIgnoreCase(start)) {
+				this.setEntryAddress(s.getAddress());
+				return s.getAddress();
+			}
+		}
+		return null;
 	}
 }
