@@ -133,6 +133,7 @@ public class ELFModule implements ExecutableImage {
 				pltIdx++;
 			} else {
 				instr = disasm.decodeInstruction(pltIdx);
+				assert instr != null;
 				pltIdx += instr.getSize();
 				if (!instr.getName().equals("nop")) break;
 			}

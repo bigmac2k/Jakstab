@@ -113,7 +113,7 @@ public class X86Disassembler implements Disassembler, X86Opcodes {
 			}
 			
 			if (instrDecoder == null) {
-				logger.error("Cannot find decoder for opcode " + Long.toHexString(opcode) + ".");
+				logger.error("Cannot find decoder for opcode " + Long.toHexString(opcode) + " at: "+ index + ".");
 				return null;
 			}
 
@@ -527,7 +527,7 @@ public class X86Disassembler implements Disassembler, X86Opcodes {
 		null,
 		null,
 		null,
-		null,
+		new InstructionDecoder("nop",ADDR_G,v_mode),
 		/* 20 */
 		/* these are all backward in appendix A of the intel book */
 		new MoveDecoder("movl", ADDR_RMR, d_mode, ADDR_C, d_mode),

@@ -260,7 +260,7 @@ public class Main {
 			logger.error( "   Final state space:                   " + String.format("%8d", stateCount));
 			logger.error( "   Finished normally:                   " + String.format("%8b", cfr.isCompleted()));
 			logger.error( "   Analysis result:                     " + cfr.getStatus());
-			//				logger.error( "   Sound:                               " + String.format("%8b", cfr.isSound()));
+			logger.error( "   Sound:                               " + String.format("%8b", cfr.isSound()));
 			logger.error( "   Indirect Branches (no import calls): " + String.format("%8d", indirectBranches));
 			logger.error( "   Unresolved Branches:                 " + String.format("%8d", program.getUnresolvedBranches().size()));
 			logger.debug("   FastSet conversions:                 " + String.format("%8d", FastSet.getConversionCount()));
@@ -287,6 +287,7 @@ public class Main {
 			stats.record(BoundedSetTracking.kSetBound.getValue());
 			stats.record(Options.startAddress.getValue());
 			stats.record(Options.startSymbol.getValue());
+			stats.record(cfr.isSound());
 
 			stats.print();
 
