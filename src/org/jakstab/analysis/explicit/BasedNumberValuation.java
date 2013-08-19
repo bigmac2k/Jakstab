@@ -408,8 +408,10 @@ public final class BasedNumberValuation implements AbstractState {
 								break;
 							case 's':
 								BasedNumberElement argStrAddr = getMemoryValue(curVarArg, 32);
-								logger.debug("  String argument: " + argStrAddr);
-								sb.append(getCString(argStrAddr.getRegion(), argStrAddr.getNumber().longValue()));
+								if(!argStrAddr.isTop() && ! argStrAddr.isNumberTop()) {
+									logger.debug("  String argument: " + argStrAddr);
+									sb.append(getCString(argStrAddr.getRegion(), argStrAddr.getNumber().longValue()));
+								}
 							}
 						}
 						sb.append(formatString.substring(lastMatch));
