@@ -381,42 +381,44 @@ public final class BasedNumberValuation implements AbstractState {
 					BasedNumberElement stringAddress = getMemoryValue(firstArg, 32);
 					if (!stringAddress.getRegion().equals(MemoryRegion.TOP) && !stringAddress.isNumberTop()) {
 						String formatString = getCString(stringAddress.getRegion(), stringAddress.getNumber().longValue());
-						logger.debug("printf called with format string " + formatString.trim());
-						StringBuilder sb = new StringBuilder();
-						int varArgCount = 0;
-						int lastMatch = 0;
-						for (int i = formatString.indexOf('%'); i >= 0; i = formatString.indexOf('%', i + 1)) {
-							sb.append(formatString.substring(lastMatch, i));
-							lastMatch = i + 2; // skip %i (works only for simple %i, %s...)
-							varArgCount++;
-							BasedNumberElement curVarArg = getMemoryValue(
-									new BasedNumberElement(firstArg.getRegion(), 
-											ExpressionFactory.createNumber(firstArg.getNumber().intValue() + varArgCount * 4, 32)), 
-											32);
-							
-							// Very basic support for printf
-							switch (formatString.charAt(i + 1)) {
-							case 'i':
-								logger.debug("  Integer argument: " + curVarArg);
-								if (curVarArg.hasUniqueConcretization()) {
-									sb.append(curVarArg.getNumber().intValue());
-									ExplicitPrintfArgs++;
-								} else {
-									sb.append(curVarArg);
-									OverAppPrintfArgs++;
-								}
-								break;
-							case 's':
-								BasedNumberElement argStrAddr = getMemoryValue(curVarArg, 32);
-								if(!argStrAddr.isTop() && ! argStrAddr.isNumberTop()) {
-									logger.debug("  String argument: " + argStrAddr);
-									sb.append(getCString(argStrAddr.getRegion(), argStrAddr.getNumber().longValue()));
+						if(formatString!= null) {
+							logger.debug("printf called with format string " + formatString.trim());
+							StringBuilder sb = new StringBuilder();
+							int varArgCount = 0;
+							int lastMatch = 0;
+							for (int i = formatString.indexOf('%'); i >= 0; i = formatString.indexOf('%', i + 1)) {
+								sb.append(formatString.substring(lastMatch, i));
+								lastMatch = i + 2; // skip %i (works only for simple %i, %s...)
+								varArgCount++;
+								BasedNumberElement curVarArg = getMemoryValue(
+										new BasedNumberElement(firstArg.getRegion(), 
+												ExpressionFactory.createNumber(firstArg.getNumber().intValue() + varArgCount * 4, 32)), 
+												32);
+
+								// Very basic support for printf
+								switch (formatString.charAt(i + 1)) {
+								case 'i':
+									logger.debug("  Integer argument: " + curVarArg);
+									if (curVarArg.hasUniqueConcretization()) {
+										sb.append(curVarArg.getNumber().intValue());
+										ExplicitPrintfArgs++;
+									} else {
+										sb.append(curVarArg);
+										OverAppPrintfArgs++;
+									}
+									break;
+								case 's':
+									BasedNumberElement argStrAddr = getMemoryValue(curVarArg, 32);
+									if(!argStrAddr.isTop() && ! argStrAddr.isNumberTop()) {
+										logger.debug("  String argument: " + argStrAddr);
+										sb.append(getCString(argStrAddr.getRegion(), argStrAddr.getNumber().longValue()));
+									}
 								}
 							}
+							sb.append(formatString.substring(lastMatch));
+							logger.info("DEBUG: printf output: " + sb.toString());
+							return new BasedNumberElement(firstArg.getNumber());
 						}
-						sb.append(formatString.substring(lastMatch));
-						logger.info("DEBUG: printf output: " + sb.toString());
-						return new BasedNumberElement(firstArg.getNumber());
 					}
 				}
 				
