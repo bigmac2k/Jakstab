@@ -28,7 +28,6 @@ import org.jakstab.analysis.*;
 import org.jakstab.analysis.composite.CompositeState;
 import org.jakstab.analysis.explicit.BasedNumberValuation;
 import org.jakstab.analysis.explicit.BoundedAddressTracking;
-import org.jakstab.analysis.explicit.BoundedSetTracking;
 import org.jakstab.analysis.procedures.ProcedureAnalysis;
 import org.jakstab.analysis.procedures.ProcedureState;
 import org.jakstab.asm.*;
@@ -284,7 +283,6 @@ public class Main {
 			stats.record(Options.summarizeRep.getValue() ? "y" : "n" );
 			stats.record(BasedNumberValuation.ExplicitPrintfArgs);
 			stats.record(BasedNumberValuation.OverAppPrintfArgs);
-			stats.record(BoundedSetTracking.kSetBound.getValue());
 			stats.record(Options.startAddress.getValue());
 			stats.record(Options.startSymbol.getValue());
 			stats.record(cfr.isSound());
