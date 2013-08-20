@@ -338,7 +338,7 @@ public class ELFModule implements ExecutableImage {
 
 	@Override
 	public RTLNumber readMemoryLocation(RTLMemoryLocation m) throws IOException {
-		
+
 		if (!(m.getAddress() instanceof RTLNumber)) return null;
 		
 		AbsoluteAddress va = new AbsoluteAddress((RTLNumber)m.getAddress());

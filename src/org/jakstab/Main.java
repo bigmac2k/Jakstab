@@ -123,8 +123,24 @@ public class Main {
 			//e.printStackTrace();
 			return;
 		}
-		logger.info("Finished parsing executable.");
-
+		logger.info("Finished parsing executable. min-addr: " + 
+				program.getMainModule().getMinAddress() + " max-addr: "+program.getMainModule().getMaxAddress());
+		
+//		FileOutputStream out;
+//		try {
+//			out = new FileOutputStream(new File("out.bin"));
+//			out.write(
+//					//	program.getMainModule().getByteArray()
+//					program.getModule(new AbsoluteAddress(0x08049c38)).getByteArray()
+//					);
+//			out.close();
+//		} catch (FileNotFoundException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 
 		// Change entry point if requested
 		if (Options.startAddress.getValue() > 0) {
@@ -276,7 +292,7 @@ public class Main {
 			stats.record(stateCount);
 			stats.record(Math.round((overallEndTime - overallStartTime)/1000.0));
 			stats.record(cfr.getStatus());
-			stats.record(Options.cpas.getValue());
+			stats.record(Options.cpas.getValue().replace(",", ""));
 			stats.record(BoundedAddressTracking.varThreshold.getValue());
 			stats.record(BoundedAddressTracking.heapThreshold.getValue());
 			stats.record(Options.basicBlocks.getValue() ? "y" : "n");
@@ -286,12 +302,13 @@ public class Main {
 			stats.record(Options.startAddress.getValue());
 			stats.record(Options.startSymbol.getValue());
 			stats.record(cfr.isSound());
+			stats.record(Options.cpas.getValue());
 
 			stats.print();
 
 			ProgramGraphWriter graphWriter = new ProgramGraphWriter(program);
 			
-			graphWriter.writeDisassembly(program, baseFileName + "_jak.asm");
+			graphWriter.writeDisassembly(program, baseFileName + "_jak_"+Options.cpas.getValue().replace(",", "")+ ".asm");
 
 			if (!(cfr.isCompleted() && Options.secondaryCPAs.getValue().length() > 0)) {
 				if (!Options.noGraphs.getValue()) {

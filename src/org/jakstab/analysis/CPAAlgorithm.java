@@ -92,7 +92,7 @@ public class CPAAlgorithm implements Algorithm {
 		this.worklist = worklist;
 		this.failFast = failFast;
 		
-		if (Options.errorTrace.getValue() || Options.asmTrace.getValue())
+		if (Options.errorTrace.getValue() || Options.asmTrace.getValue() )
 			art = new AbstractReachabilityTree();
 		else
 			art = null;
@@ -283,6 +283,9 @@ public class CPAAlgorithm implements Algorithm {
 				if (art != null && !unadjustedState.equals(e.getState())) 
 					art.addChild(unadjustedState, e.getState());
 				throw e;
+			}
+			if(failFast && !isSound() && Options.errorTrace.getValue()) {
+				throw new ControlFlowException(a,"failed fast");
 			}
 		}
 		long endTime = System.currentTimeMillis();

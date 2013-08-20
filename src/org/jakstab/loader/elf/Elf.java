@@ -622,7 +622,7 @@ public class Elf {
 	}
 
 	public Dynamic[] getDynamicSections(Section section) throws BinaryParseException {
-		if (section.sh_type != Section.SHT_DYNAMIC) {
+		if (section == null || section.sh_type != Section.SHT_DYNAMIC) {
 			return new Dynamic[0];
 		}
 		ArrayList<Dynamic> dynList = new ArrayList<Dynamic>();

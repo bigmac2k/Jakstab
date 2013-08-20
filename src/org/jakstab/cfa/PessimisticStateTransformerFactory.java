@@ -49,6 +49,7 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 	public Set<CFAEdge> resolveGoto(final AbstractState a, final RTLGoto stmt) {
 
 		assert stmt.getCondition() != null;
+		logger.debug("resolving goto" + stmt);
 
 		Set<CFAEdge> results = new FastSet<CFAEdge>();
 
@@ -73,6 +74,8 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 						logger.info(stmt.getLabel() + ": Cannot resolve target expression " + 
 								stmt.getTargetExpression() + ". Continuing with unsound underapproximation.");
 						logger.debug("State is: " + a);
+						logger.debug("Stmt: " + stmt + " cond: "+ stmt.getCondition() + " target: " + stmt.getTargetExpression() );
+
 						sound = false;
 						unresolvedBranches.add(stmt.getLabel());
 						if (Options.debug.getValue())

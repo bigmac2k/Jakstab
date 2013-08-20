@@ -100,6 +100,8 @@ public class ValuationState implements AbstractState {
 				for (AbstractDomainElement aAddress : e.getAddress().accept(this)) {
 						res.addAll(aAddress.readStorePowerSet(e.getBitWidth(), store));
 				}
+
+				//logger.debug("read at: " + e.getAddress() + " is: " + res);
 				return res;
 			}
 
@@ -173,6 +175,7 @@ public class ValuationState implements AbstractState {
 					res.add(result);
 
 				}
+				//logger.debug("evaluated: " + e + " to: "+ res);
 				return res;
 			}
 
