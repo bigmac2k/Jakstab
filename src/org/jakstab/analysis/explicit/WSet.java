@@ -184,7 +184,7 @@ public class WSet implements AbstractDomainElement {
 			}
 		}		
 	}
-
+	
 	@Override
 	public AbstractDomainElement bitExtract(int first, int last) {
 		if (isTop() || isBot()) return this;

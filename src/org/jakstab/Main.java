@@ -19,6 +19,7 @@
 package org.jakstab;
 
 import java.io.*;
+
 import java.util.*;
 
 import org.jakstab.transformation.DeadCodeElimination;
@@ -42,7 +43,6 @@ import com.google.common.collect.SetMultimap;
 import antlr.ANTLRException;
 
 public class Main {
-
 	private static Logger logger = Logger.getLogger(Main.class);;
 
 	private final static String version = "0.8.3";
