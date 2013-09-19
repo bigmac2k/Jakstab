@@ -6,26 +6,37 @@ import java.util.Set;
 import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.PartitionedMemory;
+import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.rtl.expressions.RTLNumber;
+import org.jakstab.rtl.expressions.LongBWToRTLNumberCaster;
+import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
+import org.jakstab.rtl.expressions.RTLNumberIsDynBoundedBits;
+import cc.sven.integral.JLongIsIntegral;
+import cc.sven.bounded.JLongIsBounded;
+import cc.sven.bounded.JLongIsBoundedBits;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.util.FastSet;
 
-import cc.sven.intset.*;
+import cc.sven.intset.FiniteOrderedIntegral;
+import cc.sven.tlike.*;
 
-public class BDDSet<A extends FiniteOrderedIntegral<A>> implements AbstractDomainElement {
+/* TODO extend this to something that not only contains RTLNumbers, but essentially (Region, RTLNumber)
+ * futher more, each Region may have another bit width.
+ * Therefore: Map(Region -> BitWidth), Map(Region, RTLNumber)?
+ */
+public class BDDSet implements AbstractDomainElement {
 
-	public IntSet<A> set;
+	public IntLikeSet<Long, RTLNumber> set;
 	
-	public BDDSet(IntSet<A> init) {
+	public BDDSet(IntLikeSet<Long, RTLNumber> init) {
 		this.set = init;
 	}
 	
 	@Override
 	public Set<RTLNumber> concretize() {
 		Set<RTLNumber> outset = new FastSet<RTLNumber>();
-		for(A i : set.java()) {
-			RTLNumber rtlNum = ExpressionFactory.createNumber(i.toLong(i), i.bits());
-			outset.add(rtlNum);
+		for(RTLNumber i : set.java()) {
+			outset.add(i);
 		}
 		return outset;
 	}
@@ -38,9 +49,8 @@ public class BDDSet<A extends FiniteOrderedIntegral<A>> implements AbstractDomai
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
 		//How I dislike type erasure
-		assert l instanceof BDDSet<?>;
 		@SuppressWarnings("unchecked")
-		BDDSet<A> that = (BDDSet<A>) l;
+		BDDSet that = (BDDSet) l;
 		return set.subsetOf(that.set);
 	}
 
@@ -58,15 +68,21 @@ public class BDDSet<A extends FiniteOrderedIntegral<A>> implements AbstractDomai
 	public Collection<? extends AbstractDomainElement> readStorePowerSet(
 			int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbstractDomainElement readStore(int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
-		// TODO Auto-generated method stub
-		return null;
+		IntLikeSet<Long, RTLNumber> resultSet = null;
+		for (RTLNumber rtlnum : set.java()) {
+			BDDSet res = (BDDSet) store.get(MemoryRegion.GLOBAL, rtlnum.longValue(), set.bits());
+			if(resultSet == null) {
+				resultSet = IntLikeSet$.MODULE$.applyJLong(res.set.bits(), new RTLNumberIsDynBoundedBits(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+			}
+			resultSet = resultSet.add(rtlnum);
+		}
+		return new BDDSet(resultSet);
 	}
 
 	@Override
@@ -78,66 +94,43 @@ public class BDDSet<A extends FiniteOrderedIntegral<A>> implements AbstractDomai
 
 	@Override
 	public AbstractDomainElement plus(AbstractDomainElement op) {
-		assert op instanceof BDDSet<?>;
+		assert op instanceof BDDSet;
 		@SuppressWarnings("unchecked")
-		BDDSet<A> that = (BDDSet<A>) op;
-		return new BDDSet<A>(set.plus(that.set));
+		BDDSet that = (BDDSet) op;
+		return new BDDSet(set.plus(that.set));
 	}
 
 	@Override
 	public AbstractDomainElement negate() {
-		if(set.isEmpty())
-			return this;
-		else {
-			//ugly way to get one of A
-			A tmp = set.max();
-			IntSet<A> one = IntSet$.MODULE$.apply(tmp.one(), tmp, tmp, tmp);
-			return new BDDSet<A>(set.bNot().plus(one));
-		}
+		return new BDDSet(set.negate());
 	}
 
 	@Override
 	public AbstractDomainElement multiply(AbstractDomainElement op) {
-		// TODO Auto-generated method stub
+		assert false : "Not implemented";
 		return null;
 	}
 
 	@Override
 	public AbstractDomainElement bitExtract(int first, int last) {
-		//this is totally wrong - should shift every integer to beginning and return different bitwidth
-		/*theroretically, we could store the bitwidth in a bdd by having only full length integer in there
-		 * then, we would have to rewrite quite a lot of operations such that they behave like there is a true node
-		 * even though there is just a "useless" (set = uset) path to a true node
-		 * is this equivalent to having more than one terminal? - no caching (sharing) between two different bit lenght would still work
-		 * what about storing regions in terminals -> distroys caching
-		 */
-		
-		/*assert last >= first;
-		if(set.isEmpty())
-			return this;
-		else {
-			return new BDDSet<A>(set.bitExtract(first, last));
-		}*/
-		return null;
+		return new BDDSet(set.bitExtract(last, first));
 	}
 
 	@Override
 	public AbstractDomainElement signExtend(int first, int last) {
-		// TODO Auto-generated method stub
-		return null;
+		return new BDDSet(set.signExtend(last, first));
 	}
 
 	@Override
 	public AbstractDomainElement zeroFill(int first, int last) {
-		// TODO Auto-generated method stub
-		return null;
+		return new BDDSet(set.zeroFill(last, first));
 	}
 
 	@Override
 	public AbstractDomainElement join(LatticeElement l) {
-		assert l instanceof BDDSet<?>;
+		assert l instanceof BDDSet;
 		@SuppressWarnings("unchecked")
-		BDDSet<A> that = (BDDSet<A>) l;
-		return new BDDSet<A>(set.union(that.set));
+		BDDSet that = (BDDSet) l;
+		return new BDDSet(set.union(that.set));
 	}
 }
