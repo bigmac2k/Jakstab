@@ -62,7 +62,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
 		BDDSet that = (BDDSet) l;
-		return getSet().subsetOf(that.getSet());
+		return getRegion() == that.getRegion() && getBitWidth() == that.getBitWidth() && getSet().subsetOf(that.getSet());
 	}
 
 	@Override
@@ -127,7 +127,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 			} else {
 				//Weak update
 				for(RTLNumber rtlnums : getSet().java()) {
-						store.weakUpdate(getRegion(), rtlnums.longValue(), bitWidth, value);
+						store.weakUpdate(getRegion(), rtlnums.longValue(), getBitWidth(), value);
 				}
 			}
 		}
