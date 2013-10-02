@@ -8,6 +8,7 @@ import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.PartitionedMemory;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.rtl.BitVectorType;
+import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLNumber;
 import org.jakstab.rtl.expressions.LongBWToRTLNumberCaster;
 import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
@@ -45,6 +46,9 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		return new BDDSet(topSet, MemoryRegion.TOP);
 	}
 	
+	public static final BDDSet TRUE = singleton(ExpressionFactory.TRUE);
+	public static final BDDSet FALSE = singleton(ExpressionFactory.FALSE);
+	
 	@Override
 	public Set<RTLNumber> concretize() {
 		Set<RTLNumber> outset = new FastSet<RTLNumber>();
@@ -56,7 +60,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 
 	@Override
 	public boolean hasUniqueConcretization() {
-		return getSet().remove(getSet().randomElement()).isEmpty();
+		return getRegion() == MemoryRegion.GLOBAL
+			&& getSet().remove(getSet().randomElement()).isEmpty();
 	}
 
 	@Override
@@ -77,10 +82,10 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 
 	@Override
-	public Collection<? extends AbstractDomainElement> readStorePowerSet(
+	public Collection<BDDSet> readStorePowerSet(
 			int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
-		Set<AbstractDomainElement> result = new FastSet<AbstractDomainElement>();
+		Set<BDDSet> result = new FastSet<BDDSet>();
 		//XXX limit to only n elements
 		for(RTLNumber rtlnum : getSet().java()) {
 			BDDSet res = (BDDSet) store.get(getRegion(),rtlnum.longValue(), getSet().bits());
@@ -90,7 +95,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 
 	@Override
-	public AbstractDomainElement readStore(int bitWidth,
+	public BDDSet readStore(int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
 		BDDSet result = null;
 		//XXX limit to only n elements
@@ -134,7 +139,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 
 	@Override
-	public AbstractDomainElement plus(AbstractDomainElement op) {
+	public BDDSet plus(AbstractDomainElement op) {
 		assert op instanceof BDDSet;
 		final BDDSet that = (BDDSet) op;
 		MemoryRegion nRegion = getRegion().join(that.getRegion());
@@ -146,33 +151,33 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 
 	@Override
-	public AbstractDomainElement negate() {
+	public BDDSet negate() {
 		return new BDDSet(getSet().negate(), getRegion());
 	}
 
 	@Override
-	public AbstractDomainElement multiply(AbstractDomainElement op) {
+	public BDDSet multiply(AbstractDomainElement op) {
 		assert false : "Not implemented";
 		return null;
 	}
 
 	@Override
-	public AbstractDomainElement bitExtract(int first, int last) {
+	public BDDSet bitExtract(int first, int last) {
 		return new BDDSet(getSet().bitExtract(last, first), getRegion());
 	}
 
 	@Override
-	public AbstractDomainElement signExtend(int first, int last) {
+	public BDDSet signExtend(int first, int last) {
 		return new BDDSet(getSet().signExtend(last, first), getRegion());
 	}
 
 	@Override
-	public AbstractDomainElement zeroFill(int first, int last) {
+	public BDDSet zeroFill(int first, int last) {
 		return new BDDSet(getSet().zeroFill(last, first), getRegion());
 	}
 
 	@Override
-	public AbstractDomainElement join(LatticeElement l) {
+	public BDDSet join(LatticeElement l) {
 		assert l instanceof BDDSet;
 		BDDSet that = (BDDSet) l;
 		MemoryRegion nRegion = getRegion().join(that.getRegion());
@@ -186,5 +191,22 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	@Override
 	public int getBitWidth() {
 		return getSet().bits();
+	}
+	
+	public RTLNumber randomElement() {
+		return getSet().randomElement();
+	}
+	
+	public static BDDSet empty(int bw, MemoryRegion region) {
+		return new BDDSet(topBW(bw).getSet().invert(), region);
+	}
+	public static BDDSet empty(int bw) {
+		return empty(bw, MemoryRegion.GLOBAL);
+	}
+	public static BDDSet singleton(MemoryRegion region, RTLNumber rtlnum) {
+		return new BDDSet(empty(rtlnum.getBitWidth(), region).getSet().add(rtlnum), region);
+	}
+	public static BDDSet singleton(RTLNumber rtlnum) {
+		return singleton(MemoryRegion.GLOBAL, rtlnum);
 	}
 }
