@@ -57,12 +57,16 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		}
 		return outset;
 	}
-
+	
+	public boolean isSingleton() {
+		return getSet().remove(getSet().randomElement()).isEmpty();
+	}
 	@Override
 	public boolean hasUniqueConcretization() {
 		return getRegion() == MemoryRegion.GLOBAL
-			&& getSet().remove(getSet().randomElement()).isEmpty();
+			&& isSingleton();
 	}
+
 
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {

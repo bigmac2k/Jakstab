@@ -4,6 +4,7 @@ import java.util.Set;
 
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.analysis.LatticeElement;
+import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
 import org.jakstab.analysis.Precision;
 import org.jakstab.analysis.VariableValuation;
@@ -89,6 +90,39 @@ public class BDDState implements AbstractState {
 	 * See BasedNumberValuation for similar structure.
 	 */
 	
+	private BDDSet abstractEvalAddress(RTLMemoryLocation m) {
+		BDDSet abstractAddress = abstractEval(m.getAddress());
+		//Segment register is some special x86 magic
+		RTLExpression segmentReg = m.getSegmentRegister();
+		if(segmentReg != null) {
+			if(abstractAddress.getRegion() != MemoryRegion.GLOBAL)
+				return BDDSet.topBW(m.getBitWidth());
+			BDDSet segmentValue = abstractEval(segmentReg);
+			assert segmentValue.isSingleton() && segmentValue.randomElement().intValue() == 0 : "Segment " + segmentReg + " has been assigned a value!";
+			abstractAddress = new BDDSet(abstractAddress.getSet(), segmentValue.getRegion());
+		}
+		return abstractAddress;
+	}
+	
+	private BDDSet getMemoryValue(BDDSet pointer, int bitWidth) {
+		//XXX like in the original - if pointer.getRegion() == MemoryRegion.TOP -> assert false...
+		if(pointer.isTop() || pointer.getSet().isFull())
+			return BDDSet.topBW(bitWidth);
+		assert pointer.getRegion() != MemoryRegion.TOP : "Pointer deref with TOP region";
+		//the following is again essentially a fold1...
+		BDDSet result = null;
+		for(RTLNumber rtlnum : pointer.getSet().java()) {
+			BDDSet values = abstractMemoryTable.get(pointer.getRegion(), rtlnum.intValue(), rtlnum.getBitWidth());
+			if(result == null)
+				result = BDDSet.empty(values.getBitWidth(), values.getRegion());
+			assert values.getBitWidth() == result.getBitWidth() : "Try to union different bitwidths at pointer deref";
+			if(values.getRegion() != result.getRegion())
+				return BDDSet.topBW(result.getBitWidth());
+			result = new BDDSet(result.getSet().union(values.getSet()), result.getRegion());
+		}
+		return result;
+	}
+	
 	BDDSet abstractEval(RTLExpression e) {
 		ExpressionVisitor<BDDSet> visitor = new ExpressionVisitor<BDDSet>() {
 			
@@ -121,8 +155,7 @@ public class BDDState implements AbstractState {
 			@Override
 			public BDDSet visit(RTLMemoryLocation m) {
 				//XXX restrict to n values
-				if()
-				return null;
+				return getMemoryValue(abstractEval(m), m.getBitWidth());
 			}
 
 			@Override
@@ -147,7 +180,7 @@ public class BDDState implements AbstractState {
 
 			@Override
 			public BDDSet visit(RTLVariable e) {
-				return null;
+				return abstractVarTable.get(e);
 			}
 			
 		};
