@@ -9,6 +9,7 @@ import org.jakstab.analysis.PartitionedMemory;
 import org.jakstab.analysis.Precision;
 import org.jakstab.analysis.VariableValuation;
 import org.jakstab.cfa.Location;
+import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.ExpressionVisitor;
 import org.jakstab.rtl.expressions.RTLBitRange;
 import org.jakstab.rtl.expressions.RTLConditionalExpression;
@@ -170,12 +171,134 @@ public class BDDState implements AbstractState {
 
 			@Override
 			public BDDSet visit(RTLOperation e) {
-				return null;
+				BDDSet[] abstractOperands = new BDDSet[e.getOperandCount()];
+				
+				for(int i = 0; i < e.getOperandCount(); i++)
+					abstractOperands[i] = e.getOperands()[i].accept(this);
+				
+				BDDSet op0 = abstractOperands[0];
+				BDDSet op1 = abstractOperands[1];
+								
+				switch(e.getOperator()) {
+				//decided to go for code duplication for readability (more separate cases).
+				case EQUAL:
+					if(op0.getRegion() != MemoryRegion.GLOBAL
+					&& !op0.isTop()
+					&& op1.hasUniqueConcretization()
+					&& op1.getSet().contains(ExpressionFactory.createNumber(0, op1.getBitWidth())))
+						return BDDSet.FALSE;
+					if(op1.getRegion() != MemoryRegion.GLOBAL
+					&& !op1.isTop()
+					&& op0.hasUniqueConcretization()
+					&& op0.getSet().contains(ExpressionFactory.createNumber(0, op0.getBitWidth())))
+						return BDDSet.FALSE;
+					if(!op0.isTop()
+					&& !op1.isTop()
+					&& op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth()) {
+						BDDSet result = BDDSet.empty(1);
+						if(!op0.getSet().intersect(op1.getSet()).isEmpty())
+							result = result.join(BDDSet.TRUE);
+						if(!op0.getSet().invert().intersect(op1.getSet()).isEmpty())
+							result = result.join(BDDSet.FALSE);
+						assert !result.getSet().isEmpty() : "Equal produced no result!?";
+						return result;
+					}
+					assert false : "EQUAL called on something crazy!";
+					break;
+				case UNSIGNED_LESS:
+				case LESS:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(!op0.isTop()
+					&& !op1.isTop()
+					&& !op0.getSet().isEmpty()
+					&& !op1.getSet().isEmpty()
+					&& op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth()) {
+						BDDSet result = BDDSet.empty(1);
+						if(op0.getSet().min().longValue() < op1.getSet().max().longValue())
+							result = result.join(BDDSet.TRUE);
+						if(op0.getSet().max().longValue() >= op1.getSet().min().longValue())
+							result = result.join(BDDSet.FALSE);
+						return result;
+					}
+					assert false : "LESS called on something crazy!";
+					break;
+				case UNSIGNED_LESS_OR_EQUAL:
+				case LESS_OR_EQUAL:
+					//== and <
+					RTLExpression eLess = ExpressionFactory.createLessThan(e.getOperands()[0], e.getOperands()[1]);
+					RTLExpression eEqual = ExpressionFactory.createEqual(e.getOperands()[0], e.getOperands()[1]);
+					BDDSet less = eLess.accept(this);
+					BDDSet equal = eEqual.accept(this);
+					return less.join(equal);
+				case NOT:
+					return new BDDSet(abstractOperands[0].getSet().bNot());
+				case NEG:
+					return new BDDSet(abstractOperands[0].getSet().negate());
+				case AND:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth())
+						return new BDDSet(op0.getSet().bAnd(op1.getSet()));
+					assert false : "AND called on something crazy";
+					break;
+				case OR:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth())
+						return new BDDSet(op0.getSet().bOr(op1.getSet()));
+					assert false : "OR called on something crazy";
+					break;
+				case XOR:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth())
+						return new BDDSet(op0.getSet().bXOr(op1.getSet()));
+					assert false : "XOR called on something crazy";
+					break;
+				case PLUS:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op0.getRegion() == op1.getRegion()
+					&& op0.getBitWidth() == op1.getBitWidth())
+						return new BDDSet(op0.getSet().plus(op1.getSet()), MemoryRegion.GLOBAL);
+					assert false : "PLUS called on something crazy";
+					break;
+				case UNKNOWN:
+				case CAST:
+				case SIGN_EXTEND:
+				case ZERO_FILL:
+				case FSIZE:
+				case MUL:
+				case FMUL:
+				case FDIV:
+				case DIV:
+				case MOD:
+				case POWER_OF:
+				case SHR:
+					//TODO scm: add warning if right operand is not singleton!
+				case SAR:
+				case SHL:
+				case ROL:
+				case ROR:
+				case ROLC:
+				case RORC:
+				default:
+					assert false : "Operator not handled";
+					break;
+				}
+				System.exit(1);
 			}
 
 			@Override
 			public BDDSet visit(RTLSpecialExpression e) {
-				return null;
+				//XXX todo [SCM] debug printf and possibly getprocaddress... - have a look at RTL definitions
+				return BDDSet.topBW(0);
 			}
 
 			@Override
