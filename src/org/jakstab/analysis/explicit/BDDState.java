@@ -178,6 +178,7 @@ public class BDDState implements AbstractState {
 				
 				BDDSet op0 = abstractOperands[0];
 				BDDSet op1 = abstractOperands[1];
+				BDDSet op2 = abstractOperands[2];
 								
 				switch(e.getOperator()) {
 				//decided to go for code duplication for readability (more separate cases).
@@ -272,7 +273,23 @@ public class BDDState implements AbstractState {
 				case UNKNOWN:
 				case CAST:
 				case SIGN_EXTEND:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					op2 = abstractOperands[2];
+					if(op0.hasUniqueConcretization()
+					&& op1.hasUniqueConcretization())
+						return op2.signExtend(op0.randomElement().intValue(), op1.randomElement().intValue());
+					assert false : "SIGN_EXTEND called on something crazy";
+					break;
 				case ZERO_FILL:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					op2 = abstractOperands[2];
+					if(op0.hasUniqueConcretization()
+					&& op1.hasUniqueConcretization())
+						return op2.zeroFill(op0.randomElement().intValue(), op1.randomElement().intValue());
+					assert false : "ZERO_FILL called on something crazy";
+					break;
 				case FSIZE:
 				case MUL:
 				case FMUL:
@@ -281,7 +298,6 @@ public class BDDState implements AbstractState {
 				case MOD:
 				case POWER_OF:
 				case SHR:
-					//TODO scm: add warning if right operand is not singleton!
 				case SAR:
 				case SHL:
 				case ROL:
