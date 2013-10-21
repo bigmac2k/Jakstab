@@ -5,12 +5,14 @@ import java.util.Set;
 import org.jakstab.AnalysisProperties;
 import org.jakstab.JOption;
 import org.jakstab.analysis.AbstractState;
+import org.jakstab.analysis.CPAOperators;
 import org.jakstab.analysis.ConfigurableProgramAnalysis;
 import org.jakstab.analysis.Precision;
 import org.jakstab.analysis.ReachedSet;
 import org.jakstab.cfa.CFAEdge;
 import org.jakstab.cfa.Location;
 import org.jakstab.cfa.StateTransformer;
+import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.util.Pair;
 
 public class BDDTracking implements ConfigurableProgramAnalysis {
@@ -22,35 +24,35 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		p.setExplicit(true);
 	}
 	
-	public static JOption<Integer> varThreshold = JOption.create("explicit-threshold", "k", 5, "Set the maximum number separate states.");
-	public static JOption<Integer> heapThreshold = JOption.create("heap-threshold", "k", 5, "Explicit threshold for data stored on the heap.");
+	public BDDTracking() {}
+	
+	//public static JOption<Integer> varThreshold = JOption.create("explicit-threshold", "k", 5, "Set the maximum number separate states.");
+	//public static JOption<Integer> heapThreshold = JOption.create("heap-threshold", "k", 5, "Explicit threshold for data stored on the heap.");
 	
 	@Override
 	public Set<AbstractState> post(AbstractState state, CFAEdge cfaEdge,
 			Precision precision) {
-		// TODO Auto-generated method stub
-		return null;
+		return ((BDDState) state).abstractPost((RTLStatement) cfaEdge.getTransformer(), precision);
 	}
 
+	//XXX scm to we want strenghten? how could anybody be more precise than us.
 	@Override
 	public AbstractState strengthen(AbstractState s,
 			Iterable<AbstractState> otherStates, CFAEdge cfaEdge,
 			Precision precision) {
-		// TODO Auto-generated method stub
-		return null;
+		return s;
 	}
 
 	@Override
 	public AbstractState merge(AbstractState s1, AbstractState s2,
 			Precision precision) {
-		// TODO Auto-generated method stub
-		return null;
+		if(s2.lessOrEqual(s1)) return s1;
+		return CPAOperators.mergeSep(s1, s2, precision);
 	}
 
 	@Override
 	public boolean stop(AbstractState s, ReachedSet reached, Precision precision) {
-		// TODO Auto-generated method stub
-		return false;
+		return CPAOperators.stopSep(s, reached, precision);
 	}
 
 	@Override
