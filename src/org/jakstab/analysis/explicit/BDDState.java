@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.jakstab.Program;
 import org.jakstab.analysis.AbstractState;
+import org.jakstab.analysis.AbstractStore;
 import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
@@ -36,6 +37,7 @@ import org.jakstab.rtl.statements.RTLMemset;
 import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.rtl.statements.RTLUnknownProcedureCall;
 import org.jakstab.rtl.statements.RTLVariableAssignment;
+import org.jakstab.util.Characters;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
@@ -52,6 +54,10 @@ public class BDDState implements AbstractState {
 		this(new VariableValuation<BDDSet>(proto.abstractVarTable),
 			 new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
 			 AllocationCounter.create());
+	}
+	
+	public BDDState() {
+		this(new VariableValuation<BDDSet>(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
 	}
 	
 	private final VariableValuation<BDDSet> abstractVarTable;
@@ -107,6 +113,13 @@ public class BDDState implements AbstractState {
 			return this;
 		}
 		
+	}
+	
+	@Override
+	public String toString() {
+		if(isTop()) return Characters.TOP;
+		else if(isBot()) return Characters.BOT;
+		else return "BAT: Var=" + abstractVarTable.toString() + ", " + abstractMemoryTable.toString();
 	}
 
 	@Override
@@ -296,7 +309,7 @@ public class BDDState implements AbstractState {
 			@Override
 			public BDDSet visit(RTLMemoryLocation m) {
 				//XXX restrict to n values
-				return getMemoryValue(abstractEval(m), m.getBitWidth());
+				return getMemoryValue(abstractEvalAddress(m), m.getBitWidth());
 			}
 
 			@Override
@@ -308,7 +321,38 @@ public class BDDState implements AbstractState {
 			public BDDSet visit(RTLNumber e) {
 				return BDDSet.singleton(e);
 			}
-
+			
+			//This should actually be a function returning a triple. But I feel funny today and... JAVA...
+			class CheckResult {
+				private int bits;
+				private MemoryRegion region;
+				private boolean ok = true;
+				public CheckResult(RTLOperation e, BDDSet[] abstractOperands) {
+					assert e.getOperandCount() > 0 : "Check failure for 0 operands";
+					this.region = abstractOperands[0].getRegion();
+					this.bits = abstractOperands[0].getBitWidth();
+					for(int i = 1; i < e.getOperandCount(); i++) {
+						if(this.region == MemoryRegion.GLOBAL)
+							this.region = abstractOperands[i].getRegion();
+						if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL && this.region != abstractOperands[i].getRegion())
+						|| this.bits != abstractOperands[i].getBitWidth()) {
+							logger.debug("Check for Region or BitWidth failed: this.region: " + this.region + ", that.region: " + abstractOperands[i].getRegion() + ", this.bits: " + this.bits + ", that.bits: " + abstractOperands[i].getBitWidth());
+							this.ok = false;
+							break;
+						}
+					}
+				}
+				public boolean getOk() { return ok; }
+				public MemoryRegion getRegion() {
+					assert getOk();
+					return region;
+				}
+				public int getBitWidth() {
+					assert getOk();
+					return bits;
+				}
+			}
+			
 			@Override
 			public BDDSet visit(RTLOperation e) {
 				BDDSet[] abstractOperands = new BDDSet[e.getOperandCount()];
@@ -316,13 +360,16 @@ public class BDDState implements AbstractState {
 				for(int i = 0; i < e.getOperandCount(); i++)
 					abstractOperands[i] = e.getOperands()[i].accept(this);
 				
-				BDDSet op0 = abstractOperands[0];
-				BDDSet op1 = abstractOperands[1];
-				BDDSet op2 = abstractOperands[2];
+				BDDSet op0;
+				BDDSet op1;
+				BDDSet op2;
+				CheckResult check;
 								
 				switch(e.getOperator()) {
 				//decided to go for code duplication for readability (more separate cases).
 				case EQUAL:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
 					if(op0.getRegion() != MemoryRegion.GLOBAL
 					&& !op0.isTop()
 					&& op1.hasUniqueConcretization()
@@ -364,8 +411,9 @@ public class BDDState implements AbstractState {
 							result = result.join(BDDSet.FALSE);
 						return result;
 					}
-					assert false : "LESS called on something crazy!";
-					break;
+					return BDDSet.topBW(1);
+					/*assert false : "LESS called on something crazy!";
+					break;*/
 				case UNSIGNED_LESS_OR_EQUAL:
 				case LESS_OR_EQUAL:
 					//== and <
@@ -381,33 +429,33 @@ public class BDDState implements AbstractState {
 				case AND:
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
-					if(op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth())
+					check = new CheckResult(e, abstractOperands);
+					if(check.getOk())
 						return new BDDSet(op0.getSet().bAnd(op1.getSet()));
 					assert false : "AND called on something crazy";
 					break;
 				case OR:
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
-					if(op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth())
+					check = new CheckResult(e, abstractOperands);
+					if(check.getOk())
 						return new BDDSet(op0.getSet().bOr(op1.getSet()));
 					assert false : "OR called on something crazy";
 					break;
 				case XOR:
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
-					if(op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth())
+					check = new CheckResult(e, abstractOperands);
+					if(check.getOk())
 						return new BDDSet(op0.getSet().bXOr(op1.getSet()));
 					assert false : "XOR called on something crazy";
 					break;
 				case PLUS:
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
-					if(op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth())
-						return new BDDSet(op0.getSet().plus(op1.getSet()), MemoryRegion.GLOBAL);
+					check = new CheckResult(e, abstractOperands);
+					if(check.getOk())
+						return new BDDSet(op0.getSet().plus(op1.getSet()), check.getRegion());
 					assert false : "PLUS called on something crazy";
 					break;
 				case SIGN_EXTEND:
@@ -474,7 +522,7 @@ public class BDDState implements AbstractState {
 	
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
 		final ExplicitPrecision eprec = (ExplicitPrecision)precision;
-		
+				
 		return statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			
 			private final Set<AbstractState> thisState() {
@@ -501,7 +549,7 @@ public class BDDState implements AbstractState {
 			@Override
 			public Set<AbstractState> visit(RTLVariableAssignment stmt) {
 				BDDState post = copyThisState();
-				
+								
 				RTLVariable lhs = stmt.getLeftHandSide();
 				RTLExpression rhs = stmt.getRightHandSide();
 				BDDSet evaledRhs = abstractEval(rhs);
@@ -518,8 +566,7 @@ public class BDDState implements AbstractState {
 					}
 				}				
 				
-				post.setValue(lhs, evaledRhs);
-				
+				post.setValue(lhs, evaledRhs);				
 				return Collections.singleton((AbstractState) post);
 			}
 			

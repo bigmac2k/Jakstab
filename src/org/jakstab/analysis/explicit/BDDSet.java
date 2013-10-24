@@ -50,6 +50,17 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public static final BDDSet FALSE = singleton(ExpressionFactory.FALSE);
 	
 	@Override
+	public String toString() {
+		//Hardcodednumbers!!!!
+		final int limit = 50;
+		if(getSet().sizeGreaterThan(limit)) {
+			IntLikeSet<Long, RTLNumber> tmp = getSet().take(limit);
+			return region + " | " + tmp.toString() + "...";
+		}
+		return region + " | " + getSet().toString();
+	}
+	
+	@Override
 	public Set<RTLNumber> concretize() {
 		Set<RTLNumber> outset = new FastSet<RTLNumber>();
 		for(RTLNumber i : getSet().java()) {
@@ -59,6 +70,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 	
 	public boolean isSingleton() {
+		if(getSet().isEmpty()) return false;
 		return getSet().remove(getSet().randomElement()).isEmpty();
 	}
 	@Override

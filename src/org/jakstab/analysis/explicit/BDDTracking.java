@@ -58,14 +58,12 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public Pair<AbstractState, Precision> prec(AbstractState s,
 			Precision precision, ReachedSet reached) {
-		// TODO Auto-generated method stub
-		return null;
+		return Pair.create(s, precision);
 	}
 
 	@Override
 	public AbstractState initStartState(Location label) {
-		// TODO Auto-generated method stub
-		return null;
+		return new BDDState();
 	}
 
 	@Override
