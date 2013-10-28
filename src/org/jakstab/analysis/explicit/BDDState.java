@@ -379,7 +379,9 @@ public class BDDState implements AbstractState {
 				CheckResult check;
 								
 				switch(e.getOperator()) {
-				//decided to go for code duplication for readability (more separate cases).
+				/* decided to go for code duplication for readability (more separate cases).
+				 * also, clone researchers need something meaningful to analyze...
+				 */
 				case EQUAL:
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
@@ -405,9 +407,10 @@ public class BDDState implements AbstractState {
 						assert !result.getSet().isEmpty() : "Equal produced no result!?";
 						return result;
 					}
-					assert false : "(" + op0 + " " + e.getOperator() + " " + op1 + ")";
-					assert false : "EQUAL called on something crazy!";
-					break;
+					logger.info("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
+					return BDDSet.topBW(1);
+					/*assert false : "EQUAL called on something crazy!";
+					break;*/
 				case UNSIGNED_LESS:
 				case LESS:
 					op0 = abstractOperands[0];
