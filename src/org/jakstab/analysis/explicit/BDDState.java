@@ -405,6 +405,7 @@ public class BDDState implements AbstractState {
 						assert !result.getSet().isEmpty() : "Equal produced no result!?";
 						return result;
 					}
+					logger.info("EQUAL(" + op0 + " " + e.getOperator() + " " + op1 + ")");
 					assert false : "EQUAL called on something crazy!";
 					break;
 				case UNSIGNED_LESS:
