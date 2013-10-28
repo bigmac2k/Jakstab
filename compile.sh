@@ -1,5 +1,5 @@
 #!/bin/bash
-JSCLASSPATH=lib/antlr.jar:lib/google-collect-1.0.jar:lib/javabdd-1.0b2.jar
+JSCLASSPATH=lib/antlr.jar:lib/google-collect-1.0.jar:lib/javabdd-1.0b2.jar:scala-library.jar:lib/bdd.jar
 case `uname` in
     CYGWIN*)
         JSCLASSPATH=`cygpath -p -d "$JSCLASSPATH"`
