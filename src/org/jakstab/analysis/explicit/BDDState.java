@@ -1,6 +1,7 @@
 package org.jakstab.analysis.explicit;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import org.jakstab.Program;
@@ -37,6 +38,7 @@ import org.jakstab.rtl.statements.RTLMemset;
 import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.rtl.statements.RTLUnknownProcedureCall;
 import org.jakstab.rtl.statements.RTLVariableAssignment;
+import org.jakstab.rtl.Context;
 import org.jakstab.util.Characters;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
@@ -119,7 +121,7 @@ public class BDDState implements AbstractState {
 	public String toString() {
 		if(isTop()) return Characters.TOP;
 		else if(isBot()) return Characters.BOT;
-		else return "BAT: Var=" + abstractVarTable.toString() + ", " + abstractMemoryTable.toString();
+		else return "Var = " + abstractVarTable.toString() + ", " + abstractMemoryTable.toString();
 	}
 
 	@Override
@@ -175,6 +177,17 @@ public class BDDState implements AbstractState {
 	@Override
 	public Location getLocation() {
 		throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
+	}
+	
+	private Context getContext() {
+		Context context = new Context();
+		for(Map.Entry<RTLVariable, BDDSet> entry : abstractVarTable) {
+			RTLVariable var = entry.getKey();
+			BDDSet val = entry.getValue();
+			if(val.hasUniqueConcretization())
+				context.addAssignment(var, val.getSet().randomElement());
+		}
+		return context;
 	}
 
 	@Override
@@ -238,7 +251,7 @@ public class BDDState implements AbstractState {
 			MemoryRegion region = pointer.getRegion();
 			for(RTLNumber rtlnum : pointer.getSet().java()) {
 				// XXX SCM why the bitWidth - is contained in rtlnum and in BDDSet.singleton... - CHECK!
-				abstractMemoryTable.set(region, rtlnum.longValue(), bitWidth, BDDSet.singleton(rtlnum));
+				abstractMemoryTable.set(region, rtlnum.longValue(), bitWidth, value);
 			}
 			return pointer.isSingleton();
 		}
@@ -476,22 +489,62 @@ public class BDDState implements AbstractState {
 						return op2.zeroFill(op0.randomElement().intValue(), op1.randomElement().intValue());
 					assert false : "ZERO_FILL called on something crazy";
 					break;
-				case FSIZE:
-				case MUL:
-				case FMUL:
-				case FDIV:
-				case DIV:
-				case MOD:
-				case POWER_OF:
 				case SHR:
-				case SAR:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op1.hasUniqueConcretization())
+						return new BDDSet(op0.getSet().bShr(op1.randomElement().intValue()), op0.getRegion());
+					assert false : "SHR called on something crazy";
+					break;
 				case SHL:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op1.hasUniqueConcretization())
+						return new BDDSet(op0.getSet().bShl(op1.randomElement().intValue()), op0.getRegion());
+					assert false : "SHL called on something crazy";
+					break;
 				case ROL:
+					assert false : "ROL not handled";
+					break;
 				case ROR:
+					assert false : "ROR not handled";
+					break;
+				case FSIZE:
+					assert false : "FSIZE not handled";
+					break;
+				case MUL:
+					assert false : "MUL not handled";
+					break;
+				case FMUL:
+					assert false : "FMUL not handled";
+					break;
+				case FDIV:
+					assert false : "FDIV not handled";
+					break;
+				case DIV:
+					assert false : "DIV not handled";
+					break;
+				case MOD:
+					assert false : "MOD not handled";
+					break;
+				case POWER_OF:
+					assert false : "POWER_OF not handled";
+					break;
+				case SAR:
+					assert false : "SAR not handled";
+					break;
 				case ROLC:
+					assert false : "ROLC not handled";
+					break;
 				case RORC:
+					assert false : "RORC not handled";
+					break;
 				case UNKNOWN:
+					assert false : "UNKNOWN not handled";
+					break;
 				case CAST:
+					assert false : "CAST not handled";
+					break;
 				default:
 					assert false : "Operator not handled";
 					break;
@@ -521,7 +574,9 @@ public class BDDState implements AbstractState {
 	
 	
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
-		final ExplicitPrecision eprec = (ExplicitPrecision)precision;
+		logger.info("processing abstractPost(" + statement + ")");
+		logger.info("processing in state: " + this.toString());
+		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
 				
 		return statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			
@@ -588,7 +643,45 @@ public class BDDState implements AbstractState {
 			
 			@Override
 			public Set<AbstractState> visit(RTLAssume stmt) {
-				//TODO SCM implement maybe?
+				logger.info("Found RTLAssume: " + stmt);
+				BDDSet truthValue = abstractEval(stmt.getAssumption());
+				
+				//if truthValue = False -> infeasible
+				// else if True -> fine...
+				// else work to do!
+				if(truthValue.isSingleton()) {
+					if(truthValue.lessOrEqual(BDDSet.TRUE)) {
+						logger.info("truthValue TRUE for " + stmt + " (" + truthValue + ")");
+						return thisState();
+					} else {
+						logger.info(stmt.getLabel() + ", state ID " + getIdentifier() + ": Transformer " + stmt + " is infeasible.");
+						return Collections.emptySet();
+					}
+				} else {
+					//truth value either true or false -> reduction!
+					RTLExpression assumption = stmt.getAssumption();
+					assumption = assumption.evaluate(getContext());
+					
+					if(assumption instanceof RTLOperation) {
+						RTLOperation operation = (RTLOperation) assumption;
+						switch(operation.getOperator()) {
+						case EQUAL:
+							logger.info("Handling RTLAssume: " + stmt);
+							if(operation.getOperands()[0] instanceof RTLVariable
+							&& operation.getOperands()[1] instanceof RTLNumber) {
+								RTLVariable var = (RTLVariable) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								post.setValue(var, BDDSet.singleton(num));
+								return Collections.singleton((AbstractState) post);
+							}
+							//XXX work
+							assert false;
+							break;
+						}
+					}
+				}
+				logger.info("Ignoring RTLAssume: " + stmt);
 				return Collections.singleton((AbstractState) copyThisState());
 			}
 			

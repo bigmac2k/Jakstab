@@ -53,10 +53,10 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public String toString() {
 		//Hardcodednumbers!!!!
 		final int limit = 50;
-		if(getSet().sizeGreaterThan(limit)) {
-			IntLikeSet<Long, RTLNumber> tmp = getSet().take(limit);
-			return region + " | " + tmp.toString() + "...";
-		}
+		if(getSet().isFull())
+			return region + " | ANYNUM";
+		if(getSet().sizeGreaterThan(limit))
+			return region + " | ...";
 		return region + " | " + getSet().toString();
 	}
 	
