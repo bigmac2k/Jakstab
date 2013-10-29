@@ -507,6 +507,13 @@ public class BDDState implements AbstractState {
 						return new BDDSet(op0.getSet().bShl(op1.randomElement().intValue()), op0.getRegion());
 					assert false : "SHL called on something crazy";
 					break;
+				case SAR:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op1.hasUniqueConcretization())
+						return new BDDSet(op0.getSet().bSar(op1.randomElement().intValue()), op0.getRegion());
+					assert false : "SAR not handled";
+					break;
 				case ROL:
 					assert false : "ROL not handled";
 					break;
@@ -534,9 +541,6 @@ public class BDDState implements AbstractState {
 				case POWER_OF:
 					assert false : "POWER_OF not handled";
 					break;
-				case SAR:
-					assert false : "SAR not handled";
-					break;
 				case ROLC:
 					assert false : "ROLC not handled";
 					break;
@@ -561,7 +565,7 @@ public class BDDState implements AbstractState {
 			@Override
 			public BDDSet visit(RTLSpecialExpression e) {
 				//XXX todo [SCM] debug printf and possibly getprocaddress... - have a look at RTL definitions
-				return BDDSet.topBW(0);
+				return BDDSet.topBW(e.getBitWidth());
 			}
 
 			@Override
