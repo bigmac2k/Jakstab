@@ -49,12 +49,17 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 	public Set<CFAEdge> resolveGoto(final AbstractState a, final RTLGoto stmt) {
 
 		assert stmt.getCondition() != null;
+		logger.debug(a);
 		logger.debug("resolving goto" + stmt);
 
 		Set<CFAEdge> results = new FastSet<CFAEdge>();
 
+		logger.debug(stmt.getCondition().getBitWidth());
+
+		logger.debug(stmt.getTargetExpression().getBitWidth());
 		Set<Tuple<RTLNumber>> valuePairs = a.projectionFromConcretization(
 				stmt.getCondition(), stmt.getTargetExpression());
+		logger.debug(valuePairs);
 		for (Tuple<RTLNumber> pair : valuePairs) {
 			RTLNumber conditionValue = pair.get(0);
 			RTLNumber targetValue = pair.get(1);

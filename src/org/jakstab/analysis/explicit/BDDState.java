@@ -151,9 +151,15 @@ public class BDDState implements AbstractState {
 
 		Tuple<Set<RTLNumber>> cValues = new Tuple<Set<RTLNumber>>(expressions.length);
 		for (int i=0; i<expressions.length; i++) {
+			logger.debug(expressions[i]);
 			BDDSet aValue = abstractEval(expressions[i]);
-			cValues.set(i, aValue.concretize());
+			logger.debug(aValue + " " + aValue.getBitWidth());
+			Set<RTLNumber> r = aValue.concretize();
+
+			//logger.debug(r);
+			cValues.set(i, r);
 		}
+		//logger.debug(cValues);
 		return Sets.crossProduct(cValues);
 	}
 	
@@ -514,11 +520,9 @@ public class BDDState implements AbstractState {
 					assert false : "ROR not handled";
 					break;
 				case FSIZE:
-					assert false : "FSIZE not handled";
-					break;
+					return BDDSet.topBW(abstractOperands[1].randomElement().intValue());
 				case MUL:
-					assert false : "MUL not handled";
-					break;
+					return BDDSet.topBW(abstractOperands[0].getBitWidth());
 				case FMUL:
 					assert false : "FMUL not handled";
 					break;
@@ -561,7 +565,7 @@ public class BDDState implements AbstractState {
 			@Override
 			public BDDSet visit(RTLSpecialExpression e) {
 				//XXX todo [SCM] debug printf and possibly getprocaddress... - have a look at RTL definitions
-				return BDDSet.topBW(0);
+				return BDDSet.topBW(e.getBitWidth());
 			}
 
 			@Override
@@ -572,7 +576,8 @@ public class BDDState implements AbstractState {
 		};
 		
 		BDDSet result = e.accept(visitor);
-		assert result.getBitWidth() == e.getBitWidth() : "BitWidth changed during evaluation of " + e + " to " + result;
+		
+		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		return result;
 	}
 	

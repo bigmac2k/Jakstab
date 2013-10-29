@@ -62,11 +62,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	
 	@Override
 	public Set<RTLNumber> concretize() {
-		Set<RTLNumber> outset = new FastSet<RTLNumber>();
-		for(RTLNumber i : getSet().java()) {
-			outset.add(i);
-		}
-		return outset;
+		return getSet().java();
 	}
 	
 	public boolean isSingleton() {

@@ -434,7 +434,7 @@ public final class BasedNumberValuation implements AbstractState {
 		
 		BasedNumberElement result = e.accept(visitor);
 		
-		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed during evaluation of " + e + " to " + result;
+		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		
 		return result;
 	}
