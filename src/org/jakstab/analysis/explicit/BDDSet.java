@@ -14,6 +14,7 @@ import org.jakstab.rtl.expressions.LongBWToRTLNumberCaster;
 import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
 import org.jakstab.rtl.expressions.RTLNumberIsDynBoundedBits;
 import org.jakstab.util.FastSet;
+import org.jakstab.util.Logger;
 
 import cc.sven.tlike.*;
 
@@ -23,6 +24,7 @@ import cc.sven.tlike.*;
  */
 public class BDDSet implements AbstractDomainElement, BitVectorType {
 
+	private static final Logger logger = Logger.getLogger(BDDSet.class);
 	private IntLikeSet<Long, RTLNumber> set;
 	private MemoryRegion region;
 	
@@ -104,6 +106,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 			PartitionedMemory<? extends AbstractDomainElement> store) {
 		Set<BDDSet> result = new FastSet<BDDSet>();
 		//XXX limit to only n elements
+		logger.debug("limit needed for: " + getSet() + " with " + getSet().size() + " elements");
 		for(RTLNumber rtlnum : getSet().java()) {
 			BDDSet res = (BDDSet) store.get(getRegion(),rtlnum.longValue(), getSet().bits());
 			result.add(res);
@@ -116,6 +119,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 			PartitionedMemory<? extends AbstractDomainElement> store) {
 		BDDSet result = null;
 		//XXX limit to only n elements
+		logger.debug("limit needed for: " + getSet() + " with " + getSet().size() + " elements");
 		//XXX what if getSet() is empty -> result will be null
 		for (RTLNumber rtlnum : getSet().java()) {
 			BDDSet res = (BDDSet) store.get(getRegion(), rtlnum.longValue(), getSet().bits());
