@@ -153,11 +153,8 @@ public class BDDState implements AbstractState {
 		for (int i=0; i<expressions.length; i++) {
 			logger.debug(expressions[i]);
 			BDDSet aValue = abstractEval(expressions[i]);
-			logger.debug(aValue + " " + aValue.getBitWidth());
-			Set<RTLNumber> r = aValue.concretize();
-
-			//logger.debug(r);
-			cValues.set(i, r);
+			//XXX limit up to k
+			cValues.set(i, aValue.concretize());
 		}
 		//logger.debug(cValues);
 		return Sets.crossProduct(cValues);
@@ -350,7 +347,10 @@ public class BDDState implements AbstractState {
 					assert e.getOperandCount() > 0 : "Check failure for 0 operands";
 					this.region = abstractOperands[0].getRegion();
 					this.bits = abstractOperands[0].getBitWidth();
+					logger.debug("expression "+e+" # operands:" + e.getOperandCount());
+					logger.debug("operand: " + abstractOperands[0]);
 					for(int i = 1; i < e.getOperandCount(); i++) {
+						logger.debug("operand: " + abstractOperands[i]);
 						if(this.region == MemoryRegion.GLOBAL)
 							this.region = abstractOperands[i].getRegion();
 						if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL && this.region != abstractOperands[i].getRegion())
@@ -479,7 +479,7 @@ public class BDDState implements AbstractState {
 					check = new CheckResult(e, abstractOperands);
 					if(check.getOk())
 						return new BDDSet(op0.getSet().plus(op1.getSet()), check.getRegion());
-					assert false : "PLUS called on something crazy";
+					assert false : "PLUS called on something crazy " + op0 + " + " + op1;
 					break;
 				case SIGN_EXTEND:
 					op0 = abstractOperands[0];
@@ -527,8 +527,10 @@ public class BDDState implements AbstractState {
 					assert false : "ROR not handled";
 					break;
 				case FSIZE:
+					logger.debug("FSIZE not handled");
 					return BDDSet.topBW(abstractOperands[1].randomElement().intValue());
 				case MUL:
+					logger.debug("MUL not handled");
 					return BDDSet.topBW(abstractOperands[0].getBitWidth());
 				case FMUL:
 					assert false : "FMUL not handled";
