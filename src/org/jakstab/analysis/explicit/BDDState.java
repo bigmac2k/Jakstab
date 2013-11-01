@@ -152,7 +152,7 @@ public class BDDState implements AbstractState {
 		Tuple<Set<RTLNumber>> cValues = new Tuple<Set<RTLNumber>>(expressions.length);
 		for (int i=0; i<expressions.length; i++) {
 			BDDSet aValue = abstractEval(expressions[i]);
-			if(aValue.isTop()) {
+			if(aValue.getSet().isFull()) {
 				cValues.set(i, RTLNumber.ALL_NUMBERS);
 			} else {
 				//XXX limit up to k
