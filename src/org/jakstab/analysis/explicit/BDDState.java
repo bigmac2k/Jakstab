@@ -392,6 +392,7 @@ public class BDDState implements AbstractState {
 				 * also, clone researchers need something meaningful to analyze...
 				 */
 				case EQUAL:
+					assert e.getOperandCount() == 2 : "EQUAL called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op0.getRegion() != MemoryRegion.GLOBAL
@@ -422,6 +423,7 @@ public class BDDState implements AbstractState {
 					break;*/
 				case UNSIGNED_LESS:
 				case LESS:
+					assert e.getOperandCount() == 2 : "LESS or UNSIGNED_LESS called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(!op0.isTop()
@@ -442,6 +444,7 @@ public class BDDState implements AbstractState {
 					break;*/
 				case UNSIGNED_LESS_OR_EQUAL:
 				case LESS_OR_EQUAL:
+					assert e.getOperandCount() == 2 : "UNSIGNED_LESS_OR_EQUAL or LESS_OR_EQUAL called with " + e.getOperandCount() + " operands";
 					//== and <
 					RTLExpression eLess = ExpressionFactory.createLessThan(e.getOperands()[0], e.getOperands()[1]);
 					RTLExpression eEqual = ExpressionFactory.createEqual(e.getOperands()[0], e.getOperands()[1]);
@@ -449,8 +452,10 @@ public class BDDState implements AbstractState {
 					BDDSet equal = eEqual.accept(this);
 					return less.join(equal);
 				case NOT:
+					assert e.getOperandCount() == 1 : "NOT called with " + e.getOperandCount() + " operands";
 					return new BDDSet(abstractOperands[0].getSet().bNot());
 				case NEG:
+					assert e.getOperandCount() == 1 : "NEG called with " + e.getOperandCount() + " operands";
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
 					check = new CheckResult(e, abstractOperands);
@@ -493,6 +498,7 @@ public class BDDState implements AbstractState {
 					assert false : "PLUS called on something crazy";
 					break;
 				case SIGN_EXTEND:
+					assert e.getOperandCount() == 3 : "SIGN_EXTEND called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					op2 = abstractOperands[2];
@@ -502,6 +508,7 @@ public class BDDState implements AbstractState {
 					assert false : "SIGN_EXTEND called on something crazy";
 					break;
 				case ZERO_FILL:
+					assert e.getOperandCount() == 3 : "ZERO_FILL called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					op2 = abstractOperands[2];
@@ -511,6 +518,7 @@ public class BDDState implements AbstractState {
 					assert false : "ZERO_FILL called on something crazy";
 					break;
 				case SHR:
+					assert e.getOperandCount() == 3 : "SHR called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
@@ -518,6 +526,7 @@ public class BDDState implements AbstractState {
 					assert false : "SHR called on something crazy";
 					break;
 				case SHL:
+					assert e.getOperandCount() == 3 : "SHL called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
@@ -525,6 +534,7 @@ public class BDDState implements AbstractState {
 					assert false : "SHL called on something crazy";
 					break;
 				case SAR:
+					assert e.getOperandCount() == 3 : "SAR called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
