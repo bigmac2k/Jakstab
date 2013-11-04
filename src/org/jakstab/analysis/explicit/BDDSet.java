@@ -63,6 +63,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	@Override
 	public Set<RTLNumber> concretize() {
 		//return getSet().java() directly?
+		if(getSet().isFull())
+			return RTLNumber.ALL_NUMBERS;
 		Set<RTLNumber> outset = new FastSet<RTLNumber>();
 		for(RTLNumber i : getSet().java()) {
 			outset.add(i);

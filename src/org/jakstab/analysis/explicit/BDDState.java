@@ -520,6 +520,29 @@ public class BDDState implements AbstractState {
 						return new BDDSet(op0.getSet().bSar(op1.randomElement().intValue()), op0.getRegion());
 					assert false : "SAR not handled";
 					break;
+				case MUL:
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					check = new CheckResult(e, abstractOperands);
+					//TODO scm remove
+					final int prec = 5;
+					final int maxk = 10;
+					if(check.getOk()) {
+						if(!op0.getSet().sizeGreaterThan(maxk) && !op1.getSet().sizeGreaterThan(maxk)) {
+							BDDSet res = BDDSet.empty(check.getBitWidth(), check.getRegion());
+							for(RTLNumber n1 : op0.getSet().java())
+								for(RTLNumber n2 : op1.getSet().java()) {
+									RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
+									assert n1muln2 instanceof RTLNumber : "No RTLNumber in result to multiplication!";
+									res = res.join(BDDSet.singleton((RTLNumber) n1muln2));
+								}
+							return res;
+						} else {
+							return new BDDSet(op0.getSet().mul(prec, op1.getSet()), check.getRegion());
+						}
+					}
+					assert false : "MUL not handled";
+					break;
 				case ROL:
 					assert false : "ROL not handled";
 					break;
@@ -528,9 +551,6 @@ public class BDDState implements AbstractState {
 					break;
 				case FSIZE:
 					assert false : "FSIZE not handled";
-					break;
-				case MUL:
-					assert false : "MUL not handled";
 					break;
 				case FMUL:
 					assert false : "FMUL not handled";
