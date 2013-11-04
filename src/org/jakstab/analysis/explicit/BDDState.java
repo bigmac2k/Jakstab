@@ -44,6 +44,8 @@ import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
 
+import cc.sven.tlike.IntLikeSet;
+
 public class BDDState implements AbstractState {
 	
 	private BDDState(VariableValuation<BDDSet> vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
@@ -450,35 +452,43 @@ public class BDDState implements AbstractState {
 				case NEG:
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bAnd(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bAnd(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "AND called on something crazy";
 					break;
 				case OR:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bOr(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bOr(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "OR called on something crazy";
 					break;
 				case XOR:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bXOr(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bXOr(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "XOR called on something crazy";
 					break;
 				case PLUS:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().plus(op1.getSet()), check.getRegion());
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.plus(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "PLUS called on something crazy";
 					break;
 				case SIGN_EXTEND:
@@ -521,25 +531,27 @@ public class BDDState implements AbstractState {
 					assert false : "SAR not handled";
 					break;
 				case MUL:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
 					//TODO scm remove
 					final int prec = 5;
 					final int maxk = 10;
 					if(check.getOk()) {
-						if(!op0.getSet().sizeGreaterThan(maxk) && !op1.getSet().sizeGreaterThan(maxk)) {
-							BDDSet res = BDDSet.empty(check.getBitWidth(), check.getRegion());
-							for(RTLNumber n1 : op0.getSet().java())
-								for(RTLNumber n2 : op1.getSet().java()) {
-									RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
-									assert n1muln2 instanceof RTLNumber : "No RTLNumber in result to multiplication!";
-									res = res.join(BDDSet.singleton((RTLNumber) n1muln2));
-								}
-							return res;
-						} else {
-							return new BDDSet(op0.getSet().mul(prec, op1.getSet()), check.getRegion());
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++) {
+							IntLikeSet<Long, RTLNumber> op = abstractOperands[i].getSet();
+							if(!res.sizeGreaterThan(maxk) && !op.sizeGreaterThan(maxk)) {
+								IntLikeSet<Long, RTLNumber> tmp = BDDSet.empty(check.getBitWidth(), check.getRegion()).getSet();
+								for(RTLNumber n1 : res.java())
+									for(RTLNumber n2 : op.java()) {
+										RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
+										assert n1muln2 instanceof RTLNumber : "No RTLNumber for result to multiplication!";
+										tmp = tmp.add((RTLNumber) n1muln2);
+									}
+								res = tmp;
+							} else
+								res = res.mul(prec, abstractOperands[i].getSet());
 						}
+						return new BDDSet(res, check.getRegion());
 					}
 					assert false : "MUL not handled";
 					break;
