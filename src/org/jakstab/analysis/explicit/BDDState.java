@@ -528,7 +528,7 @@ public class BDDState implements AbstractState {
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
 						return new BDDSet(op0.getSet().bSar(op1.randomElement().intValue()), op0.getRegion());
-					assert false : "SAR not handled";
+					assert false : "SAR called on something crazy";
 					break;
 				case MUL:
 					check = new CheckResult(e, abstractOperands);
@@ -538,22 +538,25 @@ public class BDDState implements AbstractState {
 					if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++) {
+							//TODO SCM : in here, i must adjust bitwidth of res.
 							IntLikeSet<Long, RTLNumber> op = abstractOperands[i].getSet();
 							if(!res.sizeGreaterThan(maxk) && !op.sizeGreaterThan(maxk)) {
-								IntLikeSet<Long, RTLNumber> tmp = BDDSet.empty(check.getBitWidth(), check.getRegion()).getSet();
+								IntLikeSet<Long, RTLNumber> tmp = BDDSet.empty(check.getBitWidth() * 2, check.getRegion()).getSet();
 								for(RTLNumber n1 : res.java())
 									for(RTLNumber n2 : op.java()) {
 										RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
 										assert n1muln2 instanceof RTLNumber : "No RTLNumber for result to multiplication!";
+										logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
 										tmp = tmp.add((RTLNumber) n1muln2);
 									}
 								res = tmp;
-							} else
-								res = res.mul(prec, abstractOperands[i].getSet());
+							} else {
+								res = res.mul(prec, op);
+							}
 						}
 						return new BDDSet(res, check.getRegion());
 					}
-					assert false : "MUL not handled";
+					assert false : "MUL called on something crazy";
 					break;
 				case ROL:
 					assert false : "ROL not handled";
