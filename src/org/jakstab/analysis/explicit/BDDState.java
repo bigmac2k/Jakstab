@@ -44,6 +44,8 @@ import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
 
+import cc.sven.tlike.IntLikeSet;
+
 public class BDDState implements AbstractState {
 	
 	private BDDState(VariableValuation<BDDSet> vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
@@ -153,7 +155,7 @@ public class BDDState implements AbstractState {
 		for (int i=0; i<expressions.length; i++) {
 			logger.debug(expressions[i]);
 			BDDSet aValue = abstractEval(expressions[i]);
-			if(aValue.isTop()) {
+			if(aValue.getSet().isFull()) {
 				cValues.set(i, RTLNumber.ALL_NUMBERS);
 			} else {
 				//XXX limit up to k
@@ -455,36 +457,44 @@ public class BDDState implements AbstractState {
 				case NEG:
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bAnd(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bAnd(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "AND called on something crazy";
 					break;
 				case OR:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bOr(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bOr(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "OR called on something crazy";
 					break;
 				case XOR:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().bXOr(op1.getSet()));
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.bXOr(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
 					assert false : "XOR called on something crazy";
 					break;
 				case PLUS:
-					op0 = abstractOperands[0];
-					op1 = abstractOperands[1];
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk())
-						return new BDDSet(op0.getSet().plus(op1.getSet()), check.getRegion());
-					assert false : "PLUS called on something crazy " + op0 + " + " + op1;
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++)
+							res = res.plus(abstractOperands[i].getSet());
+						return new BDDSet(res, check.getRegion());
+					}
+					assert false : "PLUS called on something crazy";
 					break;
 				case SIGN_EXTEND:
 					op0 = abstractOperands[0];
@@ -523,7 +533,35 @@ public class BDDState implements AbstractState {
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
 						return new BDDSet(op0.getSet().bSar(op1.randomElement().intValue()), op0.getRegion());
-					assert false : "SAR not handled";
+					assert false : "SAR called on something crazy";
+					break;
+				case MUL:
+					check = new CheckResult(e, abstractOperands);
+					//TODO scm remove
+					final int prec = 5;
+					final int maxk = 10;
+					if(check.getOk()) {
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+						for(int i = 1; i < e.getOperandCount(); i++) {
+							//TODO SCM : in here, i must adjust bitwidth of res.
+							IntLikeSet<Long, RTLNumber> op = abstractOperands[i].getSet();
+							if(!res.sizeGreaterThan(maxk) && !op.sizeGreaterThan(maxk)) {
+								IntLikeSet<Long, RTLNumber> tmp = BDDSet.empty(check.getBitWidth() * 2, check.getRegion()).getSet();
+								for(RTLNumber n1 : res.java())
+									for(RTLNumber n2 : op.java()) {
+										RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
+										assert n1muln2 instanceof RTLNumber : "No RTLNumber for result to multiplication!";
+										logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
+										tmp = tmp.add((RTLNumber) n1muln2);
+									}
+								res = tmp;
+							} else {
+								res = res.mul(prec, op);
+							}
+						}
+						return new BDDSet(res, check.getRegion());
+					}
+					assert false : "MUL called on something crazy";
 					break;
 				case ROL:
 					assert false : "ROL not handled";
@@ -534,9 +572,6 @@ public class BDDState implements AbstractState {
 				case FSIZE:
 					logger.debug("FSIZE not handled");
 					return BDDSet.topBW(abstractOperands[1].randomElement().intValue());
-				case MUL:
-					logger.debug("MUL not handled");
-					return BDDSet.topBW(abstractOperands[0].getBitWidth());
 				case FMUL:
 					assert false : "FMUL not handled";
 					break;
