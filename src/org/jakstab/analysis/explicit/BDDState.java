@@ -155,6 +155,7 @@ public class BDDState implements AbstractState {
 		for (int i=0; i<expressions.length; i++) {
 			logger.debug(expressions[i]);
 			BDDSet aValue = abstractEval(expressions[i]);
+			//TODO SCM : fix - what if set is full for boolean?
 			if(aValue.getSet().isFull()) {
 				cValues.set(i, RTLNumber.ALL_NUMBERS);
 			} else {

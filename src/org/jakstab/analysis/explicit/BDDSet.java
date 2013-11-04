@@ -56,15 +56,16 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		//Hardcodednumbers!!!!
 		final int limit = 50;
 		if(getSet().isFull())
-			return region + " | ANYNUM";
+			return "(" + region + " | " + getBitWidth() + " | ANYNUM)";
 		if(getSet().sizeGreaterThan(limit))
-			return region + " | ...";
-		return region + " | " + getSet().toString();
+			return "(" + region + " | " + getBitWidth() +  " | ...)";
+		return "(" + region + " | " + getBitWidth() + " | " + getSet() + ")";
 	}
 	
 	@Override
 	public Set<RTLNumber> concretize() {
 		//return getSet().java() directly?
+		//TODO SCM : fix - what if set is full for e.g. boolean?
 		if(getSet().isFull())
 			return RTLNumber.ALL_NUMBERS;
 		Set<RTLNumber> outset = new FastSet<RTLNumber>();
