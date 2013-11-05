@@ -434,7 +434,7 @@ public class BDDState implements AbstractState {
 						return result;
 					}
 					logger.info("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
-					return BDDSet.topBW(1);
+					return BDDSet.topBW(e.getBitWidth());
 					/*assert false : "EQUAL called on something crazy!";
 					break;*/
 				case UNSIGNED_LESS:
@@ -455,7 +455,7 @@ public class BDDState implements AbstractState {
 							result = result.join(BDDSet.FALSE);
 						return result;
 					}
-					return BDDSet.topBW(1);
+					return BDDSet.topBW(e.getBitWidth());
 					/*assert false : "LESS called on something crazy!";
 					break;*/
 				case UNSIGNED_LESS_OR_EQUAL:
