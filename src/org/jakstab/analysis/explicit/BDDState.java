@@ -284,7 +284,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		//the following is again essentially a fold1...
 		BDDSet result = null;
 		for(RTLNumber rtlnum : pointer.getSet().java()) {
-			BDDSet values = abstractMemoryTable.get(pointer.getRegion(), rtlnum.intValue(), rtlnum.getBitWidth());
+			BDDSet values = abstractMemoryTable.get(pointer.getRegion(), rtlnum.intValue(), bitWidth);
 			if(result == null)
 				result = BDDSet.empty(values.getBitWidth(), values.getRegion());
 			assert values.getBitWidth() == result.getBitWidth() : "Try to union different bitwidths at pointer deref";
