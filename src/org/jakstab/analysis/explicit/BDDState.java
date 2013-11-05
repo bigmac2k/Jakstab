@@ -741,9 +741,18 @@ public class BDDState implements AbstractState {
 								BDDState post = copyThisState();
 								post.setValue(var, BDDSet.singleton(num));
 								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
+									&& operation.getOperands()[1] instanceof RTLNumber) {
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								BDDSet evaledAddress =  post.abstractEval(mem.getAddress());
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), BDDSet.singleton(num));
+								return Collections.singleton((AbstractState) post);
 							}
-							//XXX work
-							assert false;
+							///XXX work
+						default:
+							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
 							break;
 						}
 					}
