@@ -518,7 +518,7 @@ public class BDDState implements AbstractState {
 					assert false : "ZERO_FILL called on something crazy";
 					break;
 				case SHR:
-					assert e.getOperandCount() == 3 : "SHR called with " + e.getOperandCount() + " operands";
+					assert e.getOperandCount() == 2 : "SHR called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
@@ -526,7 +526,7 @@ public class BDDState implements AbstractState {
 					assert false : "SHR called on something crazy";
 					break;
 				case SHL:
-					assert e.getOperandCount() == 3 : "SHL called with " + e.getOperandCount() + " operands";
+					assert e.getOperandCount() == 2 : "SHL called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
@@ -534,7 +534,7 @@ public class BDDState implements AbstractState {
 					assert false : "SHL called on something crazy";
 					break;
 				case SAR:
-					assert e.getOperandCount() == 3 : "SAR called with " + e.getOperandCount() + " operands";
+					assert e.getOperandCount() == 2 : "SAR called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
