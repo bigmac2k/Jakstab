@@ -40,6 +40,7 @@ import org.jakstab.rtl.statements.RTLUnknownProcedureCall;
 import org.jakstab.rtl.statements.RTLVariableAssignment;
 import org.jakstab.rtl.Context;
 import org.jakstab.util.Characters;
+import org.jakstab.util.FastSet;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
@@ -156,7 +157,13 @@ public class BDDState implements AbstractState {
 			BDDSet aValue = abstractEval(expressions[i]);
 			//TODO SCM : fix - what if set is full for boolean?
 			if(aValue.getSet().isFull()) {
-				cValues.set(i, RTLNumber.ALL_NUMBERS);
+				//is Boolean expression?
+				if(expressions[i].getBitWidth() == 1)  {
+					FastSet<RTLNumber> tmp = new FastSet<RTLNumber>(2);
+					Collections.addAll(tmp, ExpressionFactory.TRUE, ExpressionFactory.FALSE);
+					cValues.set(i, tmp);
+				} else
+					cValues.set(i, RTLNumber.ALL_NUMBERS);
 			} else {
 				//XXX limit up to k
 				logger.debug("limit needed for: " + aValue + " with " + aValue.getSet().sizeBigInt() + " elements");
