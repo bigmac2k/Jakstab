@@ -367,6 +367,11 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					logger.debug("operand: " + abstractOperands[0]);
 					for(int i = 1; i < e.getOperandCount(); i++) {
 						logger.debug("operand: " + abstractOperands[i]);
+						if(this.region == MemoryRegion.TOP
+								|| abstractOperands[i].getRegion() == MemoryRegion.TOP) {
+							this.region = MemoryRegion.TOP;
+							break;
+						}
 						if(this.region == MemoryRegion.GLOBAL)
 							this.region = abstractOperands[i].getRegion();
 						if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL && this.region != abstractOperands[i].getRegion())
