@@ -1,10 +1,12 @@
 package org.jakstab.analysis.explicit;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import org.jakstab.Program;
+import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.analysis.AbstractStore;
 import org.jakstab.analysis.LatticeElement;
@@ -12,6 +14,7 @@ import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
 import org.jakstab.analysis.Precision;
 import org.jakstab.analysis.UnknownPointerAccessException;
+import org.jakstab.analysis.ValuationState;
 import org.jakstab.analysis.VariableValuation;
 import org.jakstab.cfa.Location;
 import org.jakstab.rtl.expressions.ExpressionFactory;
@@ -150,14 +153,19 @@ public class BDDState implements AbstractState {
 	@Override
 	public Set<Tuple<RTLNumber>> projectionFromConcretization(
 			RTLExpression... expressions) {
-
+logger.debug("projection from concretization for " + expressions.length + " expressions");
 		Tuple<Set<RTLNumber>> cValues = new Tuple<Set<RTLNumber>>(expressions.length);
 		for (int i=0; i<expressions.length; i++) {
-			logger.debug(expressions[i]);
 			BDDSet aValue = abstractEval(expressions[i]);
 			//TODO SCM : fix - what if set is full for boolean?
+			logger.debug("expression: " + expressions[i] + " evalutated to: "+ aValue + " "+ aValue.isTop());
 			if(aValue.getSet().isFull()) {
-				cValues.set(i, RTLNumber.ALL_NUMBERS);
+				if (expressions[i].getBitWidth() == 1) {
+					// bitWidth is 1, we can just force 1 and 0 here
+					cValues.set(i, new HashSet<RTLNumber>() {{add(ExpressionFactory.TRUE); add(ExpressionFactory.FALSE);}});
+				} else {
+					cValues.set(i, RTLNumber.ALL_NUMBERS);
+				}
 			} else {
 				//XXX limit up to k
 				logger.debug("limit needed for: " + aValue + " with " + aValue.getSet().sizeBigInt() + " elements");
@@ -571,14 +579,20 @@ public class BDDState implements AbstractState {
 					assert false : "ROR not handled";
 					break;
 				case FSIZE:
-					logger.debug("FSIZE not handled");
-					return BDDSet.topBW(abstractOperands[1].randomElement().intValue());
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("FSIZE not handled, returning: " + ret);
+					return ret;
+				}
 				case FMUL:
 					assert false : "FMUL not handled";
 					break;
 				case FDIV:
-					assert false : "FDIV not handled";
-					break;
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("FDIV not handled, returning: " + ret);
+					return ret;
+				}
 				case DIV:
 					assert false : "DIV not handled";
 					break;
@@ -730,9 +744,18 @@ public class BDDState implements AbstractState {
 								BDDState post = copyThisState();
 								post.setValue(var, BDDSet.singleton(num));
 								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
+									&& operation.getOperands()[1] instanceof RTLNumber) {
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								BDDSet evaledAddress =  post.abstractEval(mem.getAddress());
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), BDDSet.singleton(num));
+								return Collections.singleton((AbstractState) post);
 							}
+							logger.error("Could not handle RTLAssume: " + stmt);
 							//XXX work
-							assert false;
+							//assert false;
 							break;
 						}
 					}

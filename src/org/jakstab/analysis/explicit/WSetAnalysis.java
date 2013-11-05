@@ -155,11 +155,12 @@ public class WSetAnalysis implements ConfigurableProgramAnalysis {
 					} else if (operation.getOperator() == Operator.UNSIGNED_LESS_OR_EQUAL) {
 						RTLExpression alhs = operation.getOperands()[0];
 						RTLExpression arhs = operation.getOperands()[1];
+						logger.debug(alhs + " <= " + arhs);
 						if(arhs instanceof RTLNumber)
 						{
 							RTLNumber num = (RTLNumber) arhs;
 							if(num.longValue()>=0) {
-								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0),num);
+								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0, num.getBitWidth()),num);
 								if (alhs instanceof RTLVariable) {
 									ValuationState post = new ValuationState(iState);
 									post.setVariableValue((RTLVariable)alhs,
