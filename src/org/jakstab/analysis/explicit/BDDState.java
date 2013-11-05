@@ -43,6 +43,7 @@ import org.jakstab.rtl.statements.RTLUnknownProcedureCall;
 import org.jakstab.rtl.statements.RTLVariableAssignment;
 import org.jakstab.rtl.Context;
 import org.jakstab.util.Characters;
+import org.jakstab.util.FastSet;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
@@ -160,12 +161,13 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			//TODO SCM : fix - what if set is full for boolean?
 			logger.debug("expression: " + expressions[i] + " evalutated to: "+ aValue + " "+ aValue.isTop());
 			if(aValue.getSet().isFull()) {
-				if (expressions[i].getBitWidth() == 1) {
-					// bitWidth is 1, we can just force 1 and 0 here
-					cValues.set(i, new HashSet<RTLNumber>() {{add(ExpressionFactory.TRUE); add(ExpressionFactory.FALSE);}});
-				} else {
+				//is Boolean expression?
+				if(expressions[i].getBitWidth() == 1)  {
+					FastSet<RTLNumber> tmp = new FastSet<RTLNumber>(2);
+					Collections.addAll(tmp, ExpressionFactory.TRUE, ExpressionFactory.FALSE);
+					cValues.set(i, tmp);
+				} else
 					cValues.set(i, RTLNumber.ALL_NUMBERS);
-				}
 			} else {
 				//XXX limit up to k
 				logger.debug("limit needed for: " + aValue + " with " + aValue.getSet().sizeBigInt() + " elements");
@@ -359,12 +361,14 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				private int bits;
 				private MemoryRegion region;
 				private boolean ok = true;
+				private boolean top = false;
 				public CheckResult(RTLOperation e, BDDSet[] abstractOperands) {
 					assert e.getOperandCount() > 0 : "Check failure for 0 operands";
 					this.region = abstractOperands[0].getRegion();
 					this.bits = abstractOperands[0].getBitWidth();
 					logger.debug("expression "+e+" # operands:" + e.getOperandCount());
 					logger.debug("operand: " + abstractOperands[0]);
+					this.top = this.region == MemoryRegion.TOP;
 					for(int i = 1; i < e.getOperandCount(); i++) {
 						logger.debug("operand: " + abstractOperands[i]);
 						if(this.region == MemoryRegion.TOP
@@ -374,8 +378,14 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 						}
 						if(this.region == MemoryRegion.GLOBAL)
 							this.region = abstractOperands[i].getRegion();
-						if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL && this.region != abstractOperands[i].getRegion())
-						|| this.bits != abstractOperands[i].getBitWidth()) {
+						if(abstractOperands[i].getRegion() == MemoryRegion.TOP) {
+							this.ok = false;
+							this.top = true;
+							this.region = MemoryRegion.TOP;
+							break;
+						} else if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL
+							   && this.region != abstractOperands[i].getRegion())
+							   || this.bits != abstractOperands[i].getBitWidth()) {
 							logger.debug("Check for Region or BitWidth failed: this.region: " + this.region + ", that.region: " + abstractOperands[i].getRegion() + ", this.bits: " + this.bits + ", that.bits: " + abstractOperands[i].getBitWidth());
 							this.ok = false;
 							break;
@@ -383,6 +393,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					}
 				}
 				public boolean getOk() { return ok; }
+				public boolean getTop() { return top; }
 				public MemoryRegion getRegion() {
 					assert getOk();
 					return region;
@@ -477,7 +488,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bAnd(abstractOperands[i].getSet());
@@ -487,7 +501,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					break;
 				case OR:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bOr(abstractOperands[i].getSet());
@@ -497,7 +514,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					break;
 				case XOR:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bXOr(abstractOperands[i].getSet());
@@ -507,7 +527,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					break;
 				case PLUS:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.plus(abstractOperands[i].getSet());
@@ -564,7 +587,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					//TODO scm remove
 					final int prec = 5;
 					final int maxk = 10;
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++) {
 							//TODO SCM : in here, i must adjust bitwidth of res.
@@ -768,9 +794,9 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 								post.setMemoryValue(evaledAddress, mem.getBitWidth(), BDDSet.singleton(num));
 								return Collections.singleton((AbstractState) post);
 							}
-							logger.error("Could not handle RTLAssume: " + stmt);
-							//XXX work
-							//assert false;
+							///XXX work
+						default:
+							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
 							break;
 						}
 					}
