@@ -356,15 +356,23 @@ public class BDDState implements AbstractState {
 				private int bits;
 				private MemoryRegion region;
 				private boolean ok = true;
+				private boolean top = false;
 				public CheckResult(RTLOperation e, BDDSet[] abstractOperands) {
 					assert e.getOperandCount() > 0 : "Check failure for 0 operands";
 					this.region = abstractOperands[0].getRegion();
 					this.bits = abstractOperands[0].getBitWidth();
+					this.top = this.region == MemoryRegion.TOP;
 					for(int i = 1; i < e.getOperandCount(); i++) {
 						if(this.region == MemoryRegion.GLOBAL)
 							this.region = abstractOperands[i].getRegion();
-						if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL && this.region != abstractOperands[i].getRegion())
-						|| this.bits != abstractOperands[i].getBitWidth()) {
+						if(abstractOperands[i].getRegion() == MemoryRegion.TOP) {
+							this.ok = false;
+							this.top = true;
+							this.region = MemoryRegion.TOP;
+							break;
+						} else if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL
+							   && this.region != abstractOperands[i].getRegion())
+							   || this.bits != abstractOperands[i].getBitWidth()) {
 							logger.debug("Check for Region or BitWidth failed: this.region: " + this.region + ", that.region: " + abstractOperands[i].getRegion() + ", this.bits: " + this.bits + ", that.bits: " + abstractOperands[i].getBitWidth());
 							this.ok = false;
 							break;
@@ -372,6 +380,7 @@ public class BDDState implements AbstractState {
 					}
 				}
 				public boolean getOk() { return ok; }
+				public boolean getTop() { return top; }
 				public MemoryRegion getRegion() {
 					assert getOk();
 					return region;
@@ -466,7 +475,10 @@ public class BDDState implements AbstractState {
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bAnd(abstractOperands[i].getSet());
@@ -476,7 +488,10 @@ public class BDDState implements AbstractState {
 					break;
 				case OR:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bOr(abstractOperands[i].getSet());
@@ -486,7 +501,10 @@ public class BDDState implements AbstractState {
 					break;
 				case XOR:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.bXOr(abstractOperands[i].getSet());
@@ -496,7 +514,10 @@ public class BDDState implements AbstractState {
 					break;
 				case PLUS:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++)
 							res = res.plus(abstractOperands[i].getSet());
@@ -553,7 +574,10 @@ public class BDDState implements AbstractState {
 					//TODO scm remove
 					final int prec = 5;
 					final int maxk = 10;
-					if(check.getOk()) {
+					if(check.getTop()) {
+						logger.debug("abstractEval(" + e + ") == TOP");
+						return BDDSet.topBW(e.getBitWidth());
+					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
 						for(int i = 1; i < e.getOperandCount(); i++) {
 							//TODO SCM : in here, i must adjust bitwidth of res.
