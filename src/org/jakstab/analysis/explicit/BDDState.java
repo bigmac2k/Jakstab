@@ -51,27 +51,27 @@ import org.jakstab.util.Logger;
 import cc.sven.tlike.IntLikeSet;
 
 public class BDDState implements AbstractState {
-	
+
 	private BDDState(VariableValuation<BDDSet> vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
 		this.abstractVarTable = vartable;
 		this.abstractMemoryTable = memtable;
 		this.allocationCounter = counter;
 	}
-	
+
 	protected BDDState(BDDState proto) {
 		this(new VariableValuation<BDDSet>(proto.abstractVarTable),
-			 new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
-			 AllocationCounter.create());
+				new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
+				AllocationCounter.create());
 	}
-	
+
 	public BDDState() {
 		this(new VariableValuation<BDDSet>(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
 	}
-	
+
 	private final VariableValuation<BDDSet> abstractVarTable;
 	private final PartitionedMemory<BDDSet> abstractMemoryTable;
 	private final AllocationCounter allocationCounter;
-	
+
 	private static final Logger logger = Logger.getLogger(BDDState.class);
 
 	/**
@@ -82,11 +82,11 @@ public class BDDState implements AbstractState {
 		public static AllocationCounter create() {
 			return new AllocationCounter();
 		}
-		
+
 		public static AllocationCounter create(AllocationCounter proto) {
 			return new AllocationCounter(proto.leaf);
 		}
-		
+
 		private static final class AllocationTreeNode {
 			private final Location location;
 			private final AllocationTreeNode parent;
@@ -94,17 +94,17 @@ public class BDDState implements AbstractState {
 				this.location = location; this.parent = parent;
 			}
 		}
-		
+
 		private AllocationTreeNode leaf;
-		
+
 		private AllocationCounter(AllocationTreeNode leaf) {
 			this.leaf = leaf;
 		}
-		
+
 		private AllocationCounter() {
 			this(null);
 		}
-		
+
 		public int countAllocation(Location loc) {
 			int count = 0;
 			for (AllocationTreeNode iter = leaf; iter != null; iter = iter.parent)
@@ -113,16 +113,16 @@ public class BDDState implements AbstractState {
 			leaf = new AllocationTreeNode(loc, leaf);
 			return count;
 		}
-		
+
 		public AllocationCounter join(AllocationCounter other) {
 			// TODO: Implement some kind of joining
 			//throw new UnsupportedOperationException("Missing join implementation!");
 			// This is invoked only for based constant propagation... don't know if this quick fix is correct?
 			return this;
 		}
-		
+
 	}
-	
+
 	@Override
 	public String toString() {
 		if(isTop()) return Characters.TOP;
@@ -136,9 +136,9 @@ public class BDDState implements AbstractState {
 		if(this == that) return true;
 		if(that.isTop() || isBot()) return true;
 		if(isTop() || that.isBot()) return false;
-		
+
 		return abstractVarTable.lessOrEqual(that.abstractVarTable)
-		    && abstractMemoryTable.lessOrEqual(that.abstractMemoryTable);
+				&& abstractMemoryTable.lessOrEqual(that.abstractMemoryTable);
 	}
 
 	@Override
@@ -148,13 +148,13 @@ public class BDDState implements AbstractState {
 
 	@Override
 	public boolean isBot() {
- 		return false;
+		return false;
 	}
-	
+
 	@Override
 	public Set<Tuple<RTLNumber>> projectionFromConcretization(
 			RTLExpression... expressions) {
-logger.debug("projection from concretization for " + expressions.length + " expressions");
+		logger.debug("projection from concretization for " + expressions.length + " expressions");
 		Tuple<Set<RTLNumber>> cValues = new Tuple<Set<RTLNumber>>(expressions.length);
 		for (int i=0; i<expressions.length; i++) {
 			BDDSet aValue = abstractEval(expressions[i]);
@@ -177,21 +177,21 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		//logger.debug(cValues);
 		return Sets.crossProduct(cValues);
 	}
-	
+
 	@Override
 	public BDDState join(LatticeElement l) {
 		BDDState that = (BDDState) l;
-		
+
 		if (isTop() || that.isBot()) return this;
 		if (isBot() || that.isTop()) return that;
-			
+
 		VariableValuation<BDDSet> newVarVal = 
-			abstractVarTable.join(that.abstractVarTable); 
+				abstractVarTable.join(that.abstractVarTable); 
 		PartitionedMemory<BDDSet> newStore = 
-			abstractMemoryTable.join(that.abstractMemoryTable);
+				abstractMemoryTable.join(that.abstractMemoryTable);
 		AllocationCounter newAllocCounters = 
 				allocationCounter.join(that.allocationCounter);
-		
+
 		return new BDDState(newVarVal, newStore, newAllocCounters);
 	}
 
@@ -199,7 +199,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 	public Location getLocation() {
 		throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
 	}
-	
+
 	private Context getContext() {
 		Context context = new Context();
 		for(Map.Entry<RTLVariable, BDDSet> entry : abstractVarTable) {
@@ -216,7 +216,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		//return Long.toString(stateId);
 		return Long.toString(hashCode());
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if(!(obj instanceof BDDState)) return false;
@@ -227,20 +227,20 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 	/*None Interface Methods - called in BDDAddressTracking
 	 * See BasedNumberValuation for similar structure.
 	 */
-	
+
 	private void clearTemporaryVariables() {
 		for(RTLVariable var : Program.getProgram().getArchitecture().getTemporaryVariables())
 			abstractVarTable.setTop(var);
 	}
-	
+
 	public BDDSet getValue(RTLVariable var) {
 		return abstractVarTable.get(var);
 	}
-	
+
 	public void setValue(RTLVariable var, BDDSet value) {
 		abstractVarTable.set(var, value);
 	}
-	
+
 	/* TODO SCM check!
 	void setValue(RTLVariable var, BasedNumberElement value, ExplicitPrecision precision) {
 		BasedNumberElement valueToSet;
@@ -259,7 +259,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		aVarVal.set(var, valueToSet);
 	}
 	 */
-	
+
 	// Returns true if set was successful, false if memory was overapproximated or location was not a singleton
 	private boolean setMemoryValue(BDDSet pointer, int bitWidth, BDDSet value) {
 		if(pointer.isTop()) {
@@ -277,7 +277,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			return pointer.isSingleton();
 		}
 	}
-	
+
 	private BDDSet getMemoryValue(BDDSet pointer, int bitWidth) {
 		//XXX like in the original - if pointer.getRegion() == MemoryRegion.TOP -> assert false...
 		if(pointer.isTop() || pointer.getSet().isFull())
@@ -296,7 +296,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		}
 		return result;
 	}
-	
+
 	private BDDSet abstractEvalAddress(RTLMemoryLocation m) {
 		BDDSet abstractAddress = abstractEval(m.getAddress());
 		//Segment register is some special x86 magic
@@ -310,21 +310,21 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 		}
 		return abstractAddress;
 	}
-	
+
 	BDDSet abstractEval(RTLExpression e) {
 		ExpressionVisitor<BDDSet> visitor = new ExpressionVisitor<BDDSet>() {
-			
+
 			@Override
 			public BDDSet visit(RTLBitRange e) {
 				BDDSet abstractFirst = e.getFirstBitIndex().accept(this);
 				BDDSet abstractLast = e.getLastBitIndex().accept(this);
 				BDDSet abstractOperand = e.getOperand().accept(this);
-				
+
 				if(!(abstractFirst.hasUniqueConcretization() && abstractLast.hasUniqueConcretization()))
 					return BDDSet.topBW(e.getBitWidth());
 				return abstractOperand.bitExtract(abstractFirst.randomElement().intValue(), abstractLast.randomElement().intValue());
 			}
-			
+
 			@Override
 			public BDDSet visit(RTLConditionalExpression e) {
 				BDDSet abstractCondition = e.getCondition().accept(this);
@@ -355,7 +355,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			public BDDSet visit(RTLNumber e) {
 				return BDDSet.singleton(e);
 			}
-			
+
 			//This should actually be a function returning a triple. But I feel funny today and... JAVA...
 			class CheckResult {
 				private int bits;
@@ -384,8 +384,8 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 							this.region = MemoryRegion.TOP;
 							break;
 						} else if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL
-							   && this.region != abstractOperands[i].getRegion())
-							   || this.bits != abstractOperands[i].getBitWidth()) {
+								&& this.region != abstractOperands[i].getRegion())
+								|| this.bits != abstractOperands[i].getBitWidth()) {
 							logger.debug("Check for Region or BitWidth failed: this.region: " + this.region + ", that.region: " + abstractOperands[i].getRegion() + ", this.bits: " + this.bits + ", that.bits: " + abstractOperands[i].getBitWidth());
 							this.ok = false;
 							break;
@@ -403,19 +403,19 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					return bits;
 				}
 			}
-			
+
 			@Override
 			public BDDSet visit(RTLOperation e) {
 				BDDSet[] abstractOperands = new BDDSet[e.getOperandCount()];
-				
+
 				for(int i = 0; i < e.getOperandCount(); i++)
 					abstractOperands[i] = e.getOperands()[i].accept(this);
-				
+
 				BDDSet op0;
 				BDDSet op1;
 				BDDSet op2;
 				CheckResult check;
-								
+
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -425,19 +425,19 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op0.getRegion() != MemoryRegion.GLOBAL
-					&& !op0.isTop()
-					&& op1.hasUniqueConcretization()
-					&& op1.getSet().contains(ExpressionFactory.createNumber(0, op1.getBitWidth())))
+							&& !op0.isTop()
+							&& op1.hasUniqueConcretization()
+							&& op1.getSet().contains(ExpressionFactory.createNumber(0, op1.getBitWidth())))
 						return BDDSet.FALSE;
 					if(op1.getRegion() != MemoryRegion.GLOBAL
-					&& !op1.isTop()
-					&& op0.hasUniqueConcretization()
-					&& op0.getSet().contains(ExpressionFactory.createNumber(0, op0.getBitWidth())))
+							&& !op1.isTop()
+							&& op0.hasUniqueConcretization()
+							&& op0.getSet().contains(ExpressionFactory.createNumber(0, op0.getBitWidth())))
 						return BDDSet.FALSE;
 					if(!op0.isTop()
-					&& !op1.isTop()
-					&& op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth()) {
+							&& !op1.isTop()
+							&& op0.getRegion() == op1.getRegion()
+							&& op0.getBitWidth() == op1.getBitWidth()) {
 						BDDSet result = BDDSet.empty(1);
 						if(!op0.getSet().intersect(op1.getSet()).isEmpty())
 							result = result.join(BDDSet.TRUE);
@@ -456,11 +456,11 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(!op0.isTop()
-					&& !op1.isTop()
-					&& !op0.getSet().isEmpty()
-					&& !op1.getSet().isEmpty()
-					&& op0.getRegion() == op1.getRegion()
-					&& op0.getBitWidth() == op1.getBitWidth()) {
+							&& !op1.isTop()
+							&& !op0.getSet().isEmpty()
+							&& !op1.getSet().isEmpty()
+							&& op0.getRegion() == op1.getRegion()
+							&& op0.getBitWidth() == op1.getBitWidth()) {
 						BDDSet result = BDDSet.empty(1);
 						if(op0.getSet().min().longValue() < op1.getSet().max().longValue())
 							result = result.join(BDDSet.TRUE);
@@ -544,7 +544,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					op1 = abstractOperands[1];
 					op2 = abstractOperands[2];
 					if(op0.hasUniqueConcretization()
-					&& op1.hasUniqueConcretization())
+							&& op1.hasUniqueConcretization())
 						return op2.signExtend(op0.randomElement().intValue(), op1.randomElement().intValue());
 					assert false : "SIGN_EXTEND called on something crazy";
 					break;
@@ -554,7 +554,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					op1 = abstractOperands[1];
 					op2 = abstractOperands[2];
 					if(op0.hasUniqueConcretization()
-					&& op1.hasUniqueConcretization())
+							&& op1.hasUniqueConcretization())
 						return op2.zeroFill(op0.randomElement().intValue(), op1.randomElement().intValue());
 					assert false : "ZERO_FILL called on something crazy";
 					break;
@@ -615,10 +615,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					break;
 				case ROL:
 					assert false : "ROL not handled";
-					break;
+				break;
 				case ROR:
 					assert false : "ROR not handled";
-					break;
+				break;
 				case FSIZE:
 				{
 					BDDSet ret = BDDSet.topBW(e.getBitWidth());
@@ -627,7 +627,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				}
 				case FMUL:
 					assert false : "FMUL not handled";
-					break;
+				break;
 				case FDIV:
 				{
 					BDDSet ret = BDDSet.topBW(e.getBitWidth());
@@ -636,28 +636,28 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				}
 				case DIV:
 					assert false : "DIV not handled";
-					break;
+				break;
 				case MOD:
 					assert false : "MOD not handled";
-					break;
+				break;
 				case POWER_OF:
 					assert false : "POWER_OF not handled";
-					break;
+				break;
 				case ROLC:
 					assert false : "ROLC not handled";
-					break;
+				break;
 				case RORC:
 					assert false : "RORC not handled";
-					break;
+				break;
 				case UNKNOWN:
 					assert false : "UNKNOWN not handled";
-					break;
+				break;
 				case CAST:
 					assert false : "CAST not handled";
-					break;
+				break;
 				default:
 					assert false : "Operator not handled";
-					break;
+				break;
 				}
 				System.exit(1);
 				//To make eclipse happy... Here you are, stupid.
@@ -674,23 +674,23 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			public BDDSet visit(RTLVariable e) {
 				return abstractVarTable.get(e);
 			}
-			
+
 		};
-		
+
 		BDDSet result = e.accept(visitor);
-		
+
 		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		return result;
 	}
-	
-	
+
+
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
 		logger.info("processing abstractPost(" + statement + ")");
 		logger.info("processing in state: " + this.toString());
 		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
-				
+
 		return statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
-			
+
 			private final Set<AbstractState> thisState() {
 				if(statement.getLabel() == null) logger.warn("No label: " + statement);
 				if(!statement.getLabel().getAddress().equals(statement.getNextLabel().getAddress())) {
@@ -701,25 +701,25 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					return Collections.singleton((AbstractState) BDDState.this);
 				}
 			}
-			
+
 			private final BDDState copyThisState() {
 				BDDState post = new BDDState(BDDState.this);
 				if(statement.getNextLabel() == null
-				|| !statement.getAddress().equals(statement.getNextLabel().getAddress())) {
+						|| !statement.getAddress().equals(statement.getNextLabel().getAddress())) {
 					// New instruction
 					post.clearTemporaryVariables();
 				}
 				return post;
 			}
-			
+
 			@Override
 			public Set<AbstractState> visit(RTLVariableAssignment stmt) {
 				BDDState post = copyThisState();
-								
+
 				RTLVariable lhs = stmt.getLeftHandSide();
 				RTLExpression rhs = stmt.getRightHandSide();
 				BDDSet evaledRhs = abstractEval(rhs);
-				
+
 				// Check for stackpointer alignment assignments (workaround for gcc compiled files)
 				RTLVariable sp = Program.getProgram().getArchitecture().stackPointer();
 				if (lhs.equals(sp) && rhs instanceof RTLOperation) {
@@ -731,32 +731,32 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 						logger.warn("Ignoring stackpointer alignment at " + stmt.getAddress());
 					}
 				}				
-				
+
 				post.setValue(lhs, evaledRhs);				
 				return Collections.singleton((AbstractState) post);
 			}
-			
+
 			@Override
 			public Set<AbstractState> visit(RTLMemoryAssignment stmt) {
 				BDDState post = copyThisState();
 				BDDSet evaledRhs = abstractEval(stmt.getRightHandSide());
-				
+
 				RTLMemoryLocation m = stmt.getLeftHandSide();
 				BDDSet abstractAddress = abstractEvalAddress(m);
-				
+
 				if(!post.setMemoryValue(abstractAddress, m.getBitWidth(), evaledRhs)) {
 					logger.verbose(stmt.getLabel() + ": Cannot precisely resolve memory write to " + m + ".");
 					logger.debug("State: " + BDDState.this);
 				}
-				
+
 				return Collections.singleton((AbstractState) post);
 			}
-			
+
 			@Override
 			public Set<AbstractState> visit(RTLAssume stmt) {
 				logger.info("Found RTLAssume: " + stmt);
 				BDDSet truthValue = abstractEval(stmt.getAssumption());
-				
+
 				//if truthValue = False -> infeasible
 				// else if True -> fine...
 				// else work to do!
@@ -772,14 +772,14 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					//truth value either true or false -> reduction!
 					RTLExpression assumption = stmt.getAssumption();
 					assumption = assumption.evaluate(getContext());
-					
+
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
 						switch(operation.getOperator()) {
 						case EQUAL:
 							logger.info("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[0] instanceof RTLVariable
-							&& operation.getOperands()[1] instanceof RTLNumber) {
+									&& operation.getOperands()[1] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[0];
 								RTLNumber num = (RTLNumber) operation.getOperands()[1];
 								BDDState post = copyThisState();
@@ -793,7 +793,35 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 								BDDSet evaledAddress =  post.abstractEval(mem.getAddress());
 								post.setMemoryValue(evaledAddress, mem.getBitWidth(), BDDSet.singleton(num));
 								return Collections.singleton((AbstractState) post);
+							}			
+							break;
+						case UNSIGNED_LESS_OR_EQUAL:
+							logger.info("Handling RTLAssume: " + stmt);
+							if(operation.getOperands()[0] instanceof RTLVariable
+									&& operation.getOperands()[1] instanceof RTLNumber) {
+								RTLVariable var = (RTLVariable) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								IntLikeSet<Long,RTLNumber> set = BDDSet.empty(num.getBitWidth(), MemoryRegion.GLOBAL).getSet();
+								for(int i=0; i < num.intValue(); i++){
+									set = set.add(ExpressionFactory.createNumber(i, num.getBitWidth()));
+								}
+								post.setValue(var, new BDDSet(set,MemoryRegion.GLOBAL));
+								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
+									&& operation.getOperands()[1] instanceof RTLNumber) {
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								IntLikeSet<Long,RTLNumber> set = BDDSet.empty(num.getBitWidth(), MemoryRegion.GLOBAL).getSet();
+								for(int i=0; i < num.intValue(); i++){
+									set = set.add(ExpressionFactory.createNumber(i, num.getBitWidth()));
+								}
+								BDDSet evaledAddress =  post.abstractEval(mem.getAddress());
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), new BDDSet(set,MemoryRegion.GLOBAL));
+								return Collections.singleton((AbstractState) post);
 							}
+							break;
 							///XXX work
 						default:
 							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
@@ -804,7 +832,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				logger.info("Ignoring RTLAssume: " + stmt);
 				return Collections.singleton((AbstractState) copyThisState());
 			}
-			
+
 			/*XXX SCM: Complete copy - no idea if correct...
 			 * Allocation counter is tree that counts nodes to top if location of node == current...
 			 * Ok, why the hell not
@@ -819,9 +847,9 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				// will be widened to T.
 				// TODO: How can we create regions to allow exchange of information between analyses?
 				//MemoryRegion newRegion = MemoryRegion.create("alloc" + stmt.getLabel() + "_" + getIdentifier());
-				
+
 				MemoryRegion newRegion;
-				
+
 				// Check for hardcoded allocation names (i.e., stack or FS)
 				if (stmt.getAllocationName() != null) {
 					newRegion = MemoryRegion.create(stmt.getAllocationName());
@@ -829,10 +857,10 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 					newRegion = MemoryRegion.create("alloc" + stmt.getLabel() + 
 							"#" + post.allocationCounter.countAllocation(stmt.getLabel()));
 				}
-				
+
 				// We also allow pointers of less than the actual address size, to emulate the 16 bit segment registers FS/GS
 				// FS gets a value of (FS, 0) in the prologue. 
-				
+
 				if (lhs instanceof RTLVariable) {
 					post.setValue((RTLVariable)lhs, BDDSet.singleton(newRegion, 
 							ExpressionFactory.createNumber(0, lhs.getBitWidth())));
@@ -893,16 +921,16 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			@Override
 			public Set<AbstractState> visit(RTLMemset stmt) {
 				BDDState post = copyThisState();
-				
+
 				BDDSet abstractDestination = abstractEval(stmt.getDestination());
 				BDDSet abstractValue = abstractEval(stmt.getValue());
 				BDDSet abstractCount = abstractEval(stmt.getCount());
-				
+
 				logger.debug(stmt.getLabel() + ": memset(" + abstractDestination + ", " + abstractValue + ", " + abstractCount + ")");
-				
+
 				if(abstractCount.hasUniqueConcretization()
-				&& !abstractDestination.isTop()
-				&& !abstractDestination.getSet().isFull()) {
+						&& !abstractDestination.isTop()
+						&& !abstractDestination.getSet().isFull()) {
 					if(!abstractDestination.isSingleton())
 						logger.debug(stmt.getLabel() + ": More than one destination memset(" + abstractDestination + ", " + abstractValue + ", " + abstractCount + ")");
 					int step = abstractValue.getBitWidth() / 8;
@@ -925,21 +953,21 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 			@Override
 			public Set<AbstractState> visit(RTLMemcpy stmt) {
 				BDDState post = copyThisState();
-				
+
 				BDDSet abstractSource = abstractEval(stmt.getSource());
 				BDDSet abstractDestination = abstractEval(stmt.getDestination());
 				BDDSet abstractSize = abstractEval(stmt.getSize());
-				
+
 				logger.debug(stmt.getLabel() + ": memcpy(" + abstractSource + ", " + abstractDestination + ", " + abstractSize + ")");
-				
+
 				/*force everything to be unique for now - will probably not work but have to be less carefull.
 				 * othwerwise i would have to join all possible values in destination - yak!
 				 */
 				if(abstractSize.hasUniqueConcretization()
-				&& !abstractDestination.isTop()
-				&& abstractDestination.isSingleton()
-				&& !abstractSource.isTop()
-				&& abstractSource.isSingleton()) {
+						&& !abstractDestination.isTop()
+						&& abstractDestination.isSingleton()
+						&& !abstractSource.isTop()
+						&& abstractSource.isSingleton()) {
 					post.abstractMemoryTable.memcpy(abstractSource.getRegion()
 							,abstractSource.getSet().randomElement().longValue()
 							,abstractDestination.getRegion()
@@ -951,7 +979,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 				}
 				return Collections.singleton((AbstractState) post);
 			}
-			
+
 			@Override
 			public Set<AbstractState> visitDefault(RTLStatement stmt) {
 				return thisState();
@@ -959,7 +987,7 @@ logger.debug("projection from concretization for " + expressions.length + " expr
 
 		});
 	}
-	
-	
+
+
 
 }
