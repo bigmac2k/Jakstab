@@ -233,4 +233,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public static BDDSet singleton(RTLNumber rtlnum) {
 		return singleton(MemoryRegion.GLOBAL, rtlnum);
 	}
+	public static BDDSet range(MemoryRegion region, RTLNumber lo, RTLNumber hi) {
+		return new BDDSet(IntLikeSet$.MODULE$.rangeJLong(lo, hi, new RTLNumberIsDynBoundedBits(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster()));
+	}
 }

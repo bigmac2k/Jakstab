@@ -382,6 +382,7 @@ public class BDDState implements AbstractState {
 							this.ok = false;
 							this.top = true;
 							this.region = MemoryRegion.TOP;
+							logger.debug("Check for Region == TOP for " + abstractOperands[i]);
 							break;
 						} else if((abstractOperands[i].getRegion() != MemoryRegion.GLOBAL
 								&& this.region != abstractOperands[i].getRegion())
@@ -447,7 +448,7 @@ public class BDDState implements AbstractState {
 						return result;
 					}
 					logger.info("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
-					return BDDSet.topBW(1);
+					return BDDSet.topBW(e.getBitWidth());
 					/*assert false : "EQUAL called on something crazy!";
 					break;*/
 				case UNSIGNED_LESS:
@@ -468,7 +469,7 @@ public class BDDState implements AbstractState {
 							result = result.join(BDDSet.FALSE);
 						return result;
 					}
-					return BDDSet.topBW(1);
+					return BDDSet.topBW(e.getBitWidth());
 					/*assert false : "LESS called on something crazy!";
 					break;*/
 				case UNSIGNED_LESS_OR_EQUAL:
@@ -489,7 +490,7 @@ public class BDDState implements AbstractState {
 				case AND:
 					check = new CheckResult(e, abstractOperands);
 					if(check.getTop()) {
-						logger.debug("abstractEval(" + e + ") == TOP");
+						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
@@ -502,7 +503,7 @@ public class BDDState implements AbstractState {
 				case OR:
 					check = new CheckResult(e, abstractOperands);
 					if(check.getTop()) {
-						logger.debug("abstractEval(" + e + ") == TOP");
+						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
@@ -515,7 +516,7 @@ public class BDDState implements AbstractState {
 				case XOR:
 					check = new CheckResult(e, abstractOperands);
 					if(check.getTop()) {
-						logger.debug("abstractEval(" + e + ") == TOP");
+						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
@@ -528,7 +529,7 @@ public class BDDState implements AbstractState {
 				case PLUS:
 					check = new CheckResult(e, abstractOperands);
 					if(check.getTop()) {
-						logger.debug("abstractEval(" + e + ") == TOP");
+						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
@@ -588,7 +589,7 @@ public class BDDState implements AbstractState {
 					final int prec = 5;
 					final int maxk = 10;
 					if(check.getTop()) {
-						logger.debug("abstractEval(" + e + ") == TOP");
+						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
