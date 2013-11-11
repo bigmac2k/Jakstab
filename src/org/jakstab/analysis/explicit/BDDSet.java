@@ -207,6 +207,16 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		}
 		return new BDDSet(getSet().union(that.getSet()), nRegion);
 	}
+	
+	public BDDSet meet(LatticeElement l) {
+		assert l instanceof BDDSet;
+		BDDSet that = (BDDSet) l;
+		MemoryRegion nRegion = getRegion().join(that.getRegion());
+		if(nRegion == MemoryRegion.TOP || getBitWidth() != that.getBitWidth()) {
+			return topBW(Math.max(getBitWidth(), that.getBitWidth()));
+		}
+		return new BDDSet(getSet().intersect(that.getSet()), nRegion);
+	}
 
 	@Override
 	public int getBitWidth() {
@@ -231,5 +241,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 	public static BDDSet range(MemoryRegion region, RTLNumber lo, RTLNumber hi) {
 		return new BDDSet(IntLikeSet$.MODULE$.rangeJLong(lo, hi, new RTLNumberIsDynBoundedBits(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster()));
+	}
+	public static BDDSet range(RTLNumber lo, RTLNumber hi) {
+		return BDDSet.range(MemoryRegion.GLOBAL, lo, hi);
 	}
 }
