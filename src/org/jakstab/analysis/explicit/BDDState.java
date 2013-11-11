@@ -793,7 +793,13 @@ public class BDDState implements AbstractState {
 							logger.info("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
-								return visit(new RTLAssume(switchBinaryExp(operation), stmt.getSource()));
+								RTLVariable var = (RTLVariable) operation.getOperands()[1];
+								RTLNumber num = (RTLNumber) operation.getOperands()[0];
+								BDDState post = copyThisState();
+								BDDSet curr = post.getValue(var);
+								BDDSet restricted = new BDDSet(curr.getSet().restrictGreaterOrEqual(BDDSet.singleton(num).getSet()));
+								post.setValue(var, restricted);
+								return Collections.singleton((AbstractState) post);
 							} else if(operation.getOperands()[0] instanceof RTLVariable
 								   && operation.getOperands()[1] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[0];
@@ -805,18 +811,66 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							} else if(operation.getOperands()[1] instanceof RTLMemoryLocation
 								   && operation.getOperands()[0] instanceof RTLNumber) {
-								return visit(new RTLAssume(switchBinaryExp(operation), stmt.getSource()));
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[1];
+								RTLNumber num = (RTLNumber) operation.getOperands()[0];
+								BDDState post = copyThisState();
+								BDDSet evaledAddress = post.abstractEval(mem.getAddress());
+								BDDSet curr = post.getMemoryValue(evaledAddress, mem.getBitWidth());
+								BDDSet restricted = new BDDSet(curr.getSet().restrictGreaterOrEqual(BDDSet.singleton(num).getSet()));
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), restricted);
+								return Collections.singleton((AbstractState) post);
 							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
 								   && operation.getOperands()[1] instanceof RTLNumber) {
 								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
 								RTLNumber num = (RTLNumber) operation.getOperands()[1];
 								BDDState post = copyThisState();
 								BDDSet evaledAddress = post.abstractEval(mem.getAddress());
-								post.setMemoryValue(evaledAddress, mem.getBitWidth(), BDDSet.singleton(num));
+								BDDSet curr = post.getMemoryValue(evaledAddress, mem.getBitWidth());
+								BDDSet restricted = new BDDSet(curr.getSet().restrictLessOrEqual(BDDSet.singleton(num).getSet()));
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), restricted);
 								return Collections.singleton((AbstractState) post);
 							}
-						case UNSIGNED_LESS_OR_EQUAL:
-							///XXX work
+						case LESS:
+							logger.info("Handling RTLAssume: " + stmt);
+							if(operation.getOperands()[1] instanceof RTLVariable
+							&& operation.getOperands()[0] instanceof RTLNumber) {
+								RTLVariable var = (RTLVariable) operation.getOperands()[1];
+								RTLNumber num = (RTLNumber) operation.getOperands()[0];
+								BDDState post = copyThisState();
+								BDDSet curr = post.getValue(var);
+								BDDSet restricted = new BDDSet(curr.getSet().restrictGreater(BDDSet.singleton(num).getSet()));
+								post.setValue(var, restricted);
+								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[0] instanceof RTLVariable
+								   && operation.getOperands()[1] instanceof RTLNumber) {
+								RTLVariable var = (RTLVariable) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								BDDSet curr = post.getValue(var);
+								BDDSet restricted = new BDDSet(curr.getSet().restrictLess(BDDSet.singleton(num).getSet()));
+								post.setValue(var, restricted);
+								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[1] instanceof RTLMemoryLocation
+								   && operation.getOperands()[0] instanceof RTLNumber) {
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[1];
+								RTLNumber num = (RTLNumber) operation.getOperands()[0];
+								BDDState post = copyThisState();
+								BDDSet evaledAddress = post.abstractEval(mem.getAddress());
+								BDDSet curr = post.getMemoryValue(evaledAddress, mem.getBitWidth());
+								BDDSet restricted = new BDDSet(curr.getSet().restrictGreater(BDDSet.singleton(num).getSet()));
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), restricted);
+								return Collections.singleton((AbstractState) post);
+							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
+								   && operation.getOperands()[1] instanceof RTLNumber) {
+								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
+								RTLNumber num = (RTLNumber) operation.getOperands()[1];
+								BDDState post = copyThisState();
+								BDDSet evaledAddress = post.abstractEval(mem.getAddress());
+								BDDSet curr = post.getMemoryValue(evaledAddress, mem.getBitWidth());
+								BDDSet restricted = new BDDSet(curr.getSet().restrictLess(BDDSet.singleton(num).getSet()));
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), restricted);
+								return Collections.singleton((AbstractState) post);
+							}
 						default:
 							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
 							break;
