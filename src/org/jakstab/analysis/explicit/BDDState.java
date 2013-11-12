@@ -803,23 +803,17 @@ public class BDDState implements AbstractState {
 								RTLVariable var = (RTLVariable) operation.getOperands()[0];
 								RTLNumber num = (RTLNumber) operation.getOperands()[1];
 								BDDState post = copyThisState();
-								IntLikeSet<Long,RTLNumber> set = BDDSet.empty(num.getBitWidth(), MemoryRegion.GLOBAL).getSet();
-								for(int i=0; i < num.intValue(); i++){
-									set = set.add(ExpressionFactory.createNumber(i, num.getBitWidth()));
-								}
-								post.setValue(var, new BDDSet(set,MemoryRegion.GLOBAL));
+								BDDSet set = BDDSet.range(MemoryRegion.GLOBAL, ExpressionFactory.createNumber(0,num.getBitWidth()), num);
+								post.setValue(var, new BDDSet(set.getSet().intersect(post.getValue(var).getSet()),MemoryRegion.GLOBAL));
 								return Collections.singleton((AbstractState) post);
 							} else if(operation.getOperands()[0] instanceof RTLMemoryLocation
 									&& operation.getOperands()[1] instanceof RTLNumber) {
 								RTLMemoryLocation mem = (RTLMemoryLocation) operation.getOperands()[0];
 								RTLNumber num = (RTLNumber) operation.getOperands()[1];
 								BDDState post = copyThisState();
-								IntLikeSet<Long,RTLNumber> set = BDDSet.empty(num.getBitWidth(), MemoryRegion.GLOBAL).getSet();
-								for(int i=0; i < num.intValue(); i++){
-									set = set.add(ExpressionFactory.createNumber(i, num.getBitWidth()));
-								}
 								BDDSet evaledAddress =  post.abstractEval(mem.getAddress());
-								post.setMemoryValue(evaledAddress, mem.getBitWidth(), new BDDSet(set,MemoryRegion.GLOBAL));
+								BDDSet set = BDDSet.range(MemoryRegion.GLOBAL, ExpressionFactory.createNumber(0,num.getBitWidth()), num);
+								post.setMemoryValue(evaledAddress, mem.getBitWidth(), new BDDSet(set.getSet().intersect(post.getMemoryValue(evaledAddress, mem.getBitWidth()).getSet()),MemoryRegion.GLOBAL));
 								return Collections.singleton((AbstractState) post);
 							}
 							break;

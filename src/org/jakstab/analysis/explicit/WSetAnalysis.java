@@ -173,7 +173,7 @@ public class WSetAnalysis implements ConfigurableProgramAnalysis {
 									AbstractDomainElement evaledAddress = iState.abstractEval(m.getAddress());
 									post.setMemoryValue(evaledAddress, m.getBitWidth(), 
 											valueFactory.createAbstractValue(uLessInt.concretize())
-											.meet(iState.getVariableValue((RTLVariable)alhs)));
+											.meet(iState.getMemoryValue(evaledAddress, m.getBitWidth())));
 									return post;
 								}
 							}
