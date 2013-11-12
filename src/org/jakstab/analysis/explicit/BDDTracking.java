@@ -47,12 +47,12 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	public AbstractState merge(AbstractState s1, AbstractState s2,
 			Precision precision) {
 		if(s2.lessOrEqual(s1)) return s1;
-		return CPAOperators.mergeSep(s1, s2, precision);
+		return CPAOperators.mergeJoin(s1, s2, precision);
 	}
 
 	@Override
 	public boolean stop(AbstractState s, ReachedSet reached, Precision precision) {
-		return CPAOperators.stopSep(s, reached, precision);
+		return CPAOperators.stopJoin(s, reached, precision);
 	}
 
 	@Override
