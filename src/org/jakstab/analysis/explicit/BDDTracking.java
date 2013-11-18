@@ -58,7 +58,30 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public Pair<AbstractState, Precision> prec(AbstractState s,
 			Precision precision, ReachedSet reached) {
-		return Pair.create(s, precision);
+		//System.out.println("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
+		//System.out.println("PREC reached size: " + reached.size());
+		BDDPrecision prec = (BDDPrecision) precision;
+		BDDState newState = (BDDState) s;
+		boolean changed = false;
+		for(AbstractState state : reached) {
+			BDDState bddState = (BDDState) state;
+			changed = changed || bddState.lessOrEqual(newState);
+		}
+		if(!changed)
+			return Pair.create(s, (Precision) new BDDPrecision());
+		else if(prec.getCount() >= 3){
+			//XXX: Widen
+			/*
+			 * go thourgh varmap and memmap, widen every element that needs it...
+			 */
+			System.out.println("Will Widen Now");
+			BDDState out = new BDDState(newState);
+			for(AbstractState state : reached) {
+				out.widen((BDDState) state);
+			}
+			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
+		} else
+			return Pair.create(s, (Precision) prec.inc());
 	}
 
 	@Override
@@ -70,7 +93,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	public Precision initPrecision(Location location,
 			StateTransformer transformer) {
 		// TODO Auto-generated method stub
-		return null;
+		return new BDDPrecision();
 	}
 
 }

@@ -228,13 +228,31 @@ public class BDDState implements AbstractState {
 			abstractVarTable.setTop(var);
 	}
 	
-	public BDDSet getValue(RTLVariable var) {
+	private BDDSet getValue(RTLVariable var) {
 		return abstractVarTable.get(var);
 	}
 	
-	public void setValue(RTLVariable var, BDDSet value) {
+	private void setValue(RTLVariable var, BDDSet value) {
 		abstractVarTable.set(var, value);
 	}
+	
+	/*private void setValue(RTLVariable var, BDDSet value, ExplicitPrecision eprec) {
+		BDDSet valueToSet;
+		switch(eprec.getTrackingLevel(var)) {
+		case NONE:
+			logger.debug("Precision prevents value " + value + " to be set for " + var);
+			valueToSet = BDDSet.topBW(var.getBitWidth());
+			break;
+		case REGION:
+			logger.debug("Precision created ANYNUM for " + var);
+			valueToSet = new BDDSet(BDDSet.topBW(var.getBitWidth()).getSet(), value.getRegion());
+			break;
+		case FULL:
+		default:
+			valueToSet = value;
+		}
+		abstractVarTable.set(var, valueToSet);
+	}*/
 	
 	/* TODO SCM check!
 	void setValue(RTLVariable var, BasedNumberElement value, ExplicitPrecision precision) {
@@ -254,6 +272,23 @@ public class BDDState implements AbstractState {
 		aVarVal.set(var, valueToSet);
 	}
 	 */
+	
+	//XXX dummy
+	public void widen(BDDState other) {
+		FastSet<RTLVariable> toWiden = new FastSet<RTLVariable>();
+		for(Map.Entry<RTLVariable, BDDSet> entry : abstractVarTable) {
+			RTLVariable key = entry.getKey();
+			BDDSet otherEntry = other.abstractVarTable.get(key);
+			if(otherEntry == null) continue;
+			if(!entry.equals(otherEntry))
+				toWiden.add(key);
+		}
+		
+		for(RTLVariable var : toWiden)
+			abstractVarTable.setTop(var);
+		
+		abstractMemoryTable.setTop();
+	}
 	
 	// Returns true if set was successful, false if memory was overapproximated or location was not a singleton
 	private boolean setMemoryValue(BDDSet pointer, int bitWidth, BDDSet value) {
@@ -666,11 +701,10 @@ public class BDDState implements AbstractState {
 	
 	
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
-		logger.info("processing abstractPost(" + statement + ")");
-		logger.info("processing in state: " + this.toString());
+		logger.debug("start processing abstractPost(" + statement + ")");
 		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
-				
-		return statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
+		
+		Set<AbstractState> res = statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			
 			private final Set<AbstractState> thisState() {
 				if(statement.getLabel() == null) logger.warn("No label: " + statement);
@@ -713,7 +747,7 @@ public class BDDState implements AbstractState {
 					}
 				}				
 				
-				post.setValue(lhs, evaledRhs);				
+				post.setValue(lhs, evaledRhs);
 				return Collections.singleton((AbstractState) post);
 			}
 			
@@ -1034,6 +1068,9 @@ public class BDDState implements AbstractState {
 			}
 
 		});
+		
+		logger.debug("finished abstractPost(" + statement + ") in state: " + this.toString() + " with result: " + res);
+		return res;
 	}
 	
 	
