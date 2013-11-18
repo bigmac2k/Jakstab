@@ -211,4 +211,18 @@ public class FastSet<E> extends AbstractSet<E> implements Set<E>, Serializable, 
 		i.remove();
 		return element;
 	}
+	
+	@Override
+	public String toString() {
+		StringBuffer buf = new StringBuffer("FastSet(");
+		Iterator<E> iter = this.iterator();
+		if(iter.hasNext())
+			buf.append(iter.next().toString());
+		while(iter.hasNext()) {
+			buf.append(", ");
+			buf.append(iter.next().toString());
+		}
+		buf.append(")");
+		return buf.toString();
+	}
 }
