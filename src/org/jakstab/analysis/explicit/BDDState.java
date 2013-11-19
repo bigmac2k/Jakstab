@@ -6,7 +6,6 @@ import java.util.Set;
 
 import org.jakstab.Program;
 import org.jakstab.analysis.AbstractState;
-import org.jakstab.analysis.AbstractStore;
 import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
@@ -41,6 +40,7 @@ import org.jakstab.rtl.statements.RTLVariableAssignment;
 import org.jakstab.rtl.Context;
 import org.jakstab.util.Characters;
 import org.jakstab.util.FastSet;
+import org.jakstab.util.MapMap.EntryIterator;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
@@ -274,20 +274,33 @@ public class BDDState implements AbstractState {
 	 */
 	
 	//XXX dummy
-	public void widen(BDDState other) {
-		FastSet<RTLVariable> toWiden = new FastSet<RTLVariable>();
+	public BDDState widen(BDDState other) {
+		BDDState result = new BDDState(this);
 		for(Map.Entry<RTLVariable, BDDSet> entry : abstractVarTable) {
 			RTLVariable key = entry.getKey();
-			BDDSet otherEntry = other.abstractVarTable.get(key);
-			if(otherEntry == null) continue;
-			if(!entry.equals(otherEntry))
-				toWiden.add(key);
+			BDDSet value = entry.getValue();
+			BDDSet otherValue = other.abstractVarTable.get(key);
+			if(otherValue == null) continue;
+			if(!value.equals(otherValue)) {
+				logger.debug("widening variable " + key + " that had value " + value + " because of " + otherValue);
+				result.abstractVarTable.setTop(key);
+			}
+		}		
+		
+		//XXX broken - does not select anything to widen
+		for(EntryIterator<MemoryRegion, Long, BDDSet> iter = abstractMemoryTable.entryIterator(); iter.hasEntry(); iter.next()) {
+			MemoryRegion region = iter.getLeftKey();
+			Long offset = iter.getRightKey();
+			BDDSet value = iter.getValue();
+			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
+			if(otherValue == null) continue;
+			if(!value.equals(otherValue)) {
+				logger.debug("widening memory chell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
+				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+			}
 		}
 		
-		for(RTLVariable var : toWiden)
-			abstractVarTable.setTop(var);
-		
-		abstractMemoryTable.setTop();
+		return result;
 	}
 	
 	// Returns true if set was successful, false if memory was overapproximated or location was not a singleton
@@ -624,7 +637,7 @@ public class BDDState implements AbstractState {
 									for(RTLNumber n2 : op.java()) {
 										RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
 										assert n1muln2 instanceof RTLNumber : "No RTLNumber for result to multiplication!";
-										logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
+										//logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
 										tmp = tmp.add((RTLNumber) n1muln2);
 									}
 								res = tmp;
@@ -777,7 +790,7 @@ public class BDDState implements AbstractState {
 			
 			@Override
 			public Set<AbstractState> visit(RTLAssume stmt) {
-				logger.info("Found RTLAssume: " + stmt);
+				logger.debug("Found RTLAssume: " + stmt);
 				BDDSet truthValue = abstractEval(stmt.getAssumption());
 				
 				//if truthValue = False -> infeasible
@@ -785,7 +798,7 @@ public class BDDState implements AbstractState {
 				// else work to do!
 				if(truthValue.isSingleton()) {
 					if(truthValue.lessOrEqual(BDDSet.TRUE)) {
-						logger.info("truthValue TRUE for " + stmt + " (" + truthValue + ")");
+						logger.debug("truthValue TRUE for " + stmt + " (" + truthValue + ")");
 						return thisState();
 					} else {
 						logger.info(stmt.getLabel() + ", state ID " + getIdentifier() + ": Transformer " + stmt + " is infeasible.");
@@ -800,7 +813,7 @@ public class BDDState implements AbstractState {
 						RTLOperation operation = (RTLOperation) assumption;
 						switch(operation.getOperator()) {
 						case EQUAL:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								return visit(new RTLAssume(switchBinaryExp(operation), stmt.getSource()));
@@ -824,7 +837,7 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						case LESS_OR_EQUAL:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[1];
@@ -865,7 +878,7 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						case LESS:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[1];
@@ -906,12 +919,12 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						default:
-							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
+							logger.debug("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
 							break;
 						}
 					}
 				}
-				logger.info("Ignoring RTLAssume: " + stmt);
+				logger.debug("Ignoring RTLAssume: " + stmt);
 				return Collections.singleton((AbstractState) copyThisState());
 			}
 			

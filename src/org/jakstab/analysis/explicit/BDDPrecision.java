@@ -19,4 +19,8 @@ public class BDDPrecision implements Precision {
 	public int getCount() {
 		return count;
 	}
+	@Override
+	public String toString() {
+		return "Count: " + ((Integer) count).toString();
+	}
 }

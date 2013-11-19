@@ -61,6 +61,13 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 	
 	@Override
+	public boolean equals(Object other) {
+		if(!(other instanceof BDDSet)) return false;
+		BDDSet otherBdd = (BDDSet) other;
+		return (getRegion() == otherBdd.getRegion()) && (getSet().equals(otherBdd.getSet()));
+	}
+	
+	@Override
 	public Set<RTLNumber> concretize() {
 		//return getSet().java() directly?
 		//TODO SCM : fix - what if set is full for e.g. boolean?
