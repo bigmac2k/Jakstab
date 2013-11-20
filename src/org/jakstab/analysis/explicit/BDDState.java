@@ -838,7 +838,7 @@ public class BDDState implements AbstractState {
 						logger.debug("truthValue TRUE for " + stmt + " (" + truthValue + ")");
 						return thisState();
 					} else {
-						logger.info(stmt.getLabel() + ", state ID " + getIdentifier() + ": Transformer " + stmt + " is infeasible.");
+						logger.info(stmt.getLabel() + ", state ID " + getIdentifier() + ": Transformer " + stmt + " is infeasible. ("+truthValue+")");
 						return Collections.emptySet();
 					}
 				} else {
