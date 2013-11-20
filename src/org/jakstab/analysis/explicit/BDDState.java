@@ -8,7 +8,6 @@ import java.util.Set;
 import org.jakstab.Program;
 import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.AbstractState;
-import org.jakstab.analysis.AbstractStore;
 import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
@@ -44,6 +43,7 @@ import org.jakstab.rtl.statements.RTLVariableAssignment;
 import org.jakstab.rtl.Context;
 import org.jakstab.util.Characters;
 import org.jakstab.util.FastSet;
+import org.jakstab.util.MapMap.EntryIterator;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
@@ -232,15 +232,33 @@ public class BDDState implements AbstractState {
 		for(RTLVariable var : Program.getProgram().getArchitecture().getTemporaryVariables())
 			abstractVarTable.setTop(var);
 	}
-
-	public BDDSet getValue(RTLVariable var) {
+	
+	private BDDSet getValue(RTLVariable var) {
 		return abstractVarTable.get(var);
 	}
-
-	public void setValue(RTLVariable var, BDDSet value) {
+	
+	private void setValue(RTLVariable var, BDDSet value) {
 		abstractVarTable.set(var, value);
 	}
-
+	
+	/*private void setValue(RTLVariable var, BDDSet value, ExplicitPrecision eprec) {
+		BDDSet valueToSet;
+		switch(eprec.getTrackingLevel(var)) {
+		case NONE:
+			logger.debug("Precision prevents value " + value + " to be set for " + var);
+			valueToSet = BDDSet.topBW(var.getBitWidth());
+			break;
+		case REGION:
+			logger.debug("Precision created ANYNUM for " + var);
+			valueToSet = new BDDSet(BDDSet.topBW(var.getBitWidth()).getSet(), value.getRegion());
+			break;
+		case FULL:
+		default:
+			valueToSet = value;
+		}
+		abstractVarTable.set(var, valueToSet);
+	}*/
+	
 	/* TODO SCM check!
 	void setValue(RTLVariable var, BasedNumberElement value, ExplicitPrecision precision) {
 		BasedNumberElement valueToSet;
@@ -259,7 +277,37 @@ public class BDDState implements AbstractState {
 		aVarVal.set(var, valueToSet);
 	}
 	 */
-
+	
+	//XXX dummy
+	public BDDState widen(BDDState other) {
+		BDDState result = new BDDState(this);
+		for(Map.Entry<RTLVariable, BDDSet> entry : abstractVarTable) {
+			RTLVariable key = entry.getKey();
+			BDDSet value = entry.getValue();
+			BDDSet otherValue = other.abstractVarTable.get(key);
+			if(otherValue == null) continue;
+			if(!value.equals(otherValue)) {
+				logger.debug("widening variable " + key + " that had value " + value + " because of " + otherValue);
+				result.abstractVarTable.setTop(key);
+			}
+		}		
+		
+		//XXX broken - does not select anything to widen
+		for(EntryIterator<MemoryRegion, Long, BDDSet> iter = abstractMemoryTable.entryIterator(); iter.hasEntry(); iter.next()) {
+			MemoryRegion region = iter.getLeftKey();
+			Long offset = iter.getRightKey();
+			BDDSet value = iter.getValue();
+			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
+			if(otherValue == null) continue;
+			if(!value.equals(otherValue)) {
+				logger.debug("widening memory chell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
+				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+			}
+		}
+		
+		return result;
+	}
+	
 	// Returns true if set was successful, false if memory was overapproximated or location was not a singleton
 	private boolean setMemoryValue(BDDSet pointer, int bitWidth, BDDSet value) {
 		if(pointer.isTop()) {
@@ -282,7 +330,11 @@ public class BDDState implements AbstractState {
 		//XXX like in the original - if pointer.getRegion() == MemoryRegion.TOP -> assert false...
 		if(pointer.isTop() || pointer.getSet().isFull())
 			return BDDSet.topBW(bitWidth);
-		assert pointer.getRegion() != MemoryRegion.TOP : "Pointer deref with TOP region";
+		if(pointer.getRegion() == MemoryRegion.TOP)
+		{
+			logger.error("Pointer deref with TOP region (pointer: " + pointer +")");
+			return BDDSet.topBW(bitWidth);
+		}
 		//the following is again essentially a fold1...
 		BDDSet result = null;
 		for(RTLNumber rtlnum : pointer.getSet().java()) {
@@ -305,7 +357,8 @@ public class BDDState implements AbstractState {
 			if(abstractAddress.getRegion() != MemoryRegion.GLOBAL)
 				return BDDSet.topBW(m.getBitWidth());
 			BDDSet segmentValue = abstractEval(segmentReg);
-			assert segmentValue.isSingleton() && segmentValue.randomElement().intValue() == 0 : "Segment " + segmentReg + " has been assigned a value!";
+			// return top instead?
+			assert segmentValue.getSet().isEmpty() || !segmentValue.isSingleton() || segmentValue.randomElement().intValue() == 0 : "Segment " + segmentReg + " has been assigned a value!";
 			abstractAddress = new BDDSet(abstractAddress.getSet(), segmentValue.getRegion());
 		}
 		return abstractAddress;
@@ -361,26 +414,23 @@ public class BDDState implements AbstractState {
 				private int bits;
 				private MemoryRegion region;
 				private boolean ok = true;
-				private boolean top = false;
 				public CheckResult(RTLOperation e, BDDSet[] abstractOperands) {
 					assert e.getOperandCount() > 0 : "Check failure for 0 operands";
 					this.region = abstractOperands[0].getRegion();
 					this.bits = abstractOperands[0].getBitWidth();
 					logger.debug("expression "+e+" # operands:" + e.getOperandCount());
 					logger.debug("operand: " + abstractOperands[0]);
-					this.top = this.region == MemoryRegion.TOP;
 					for(int i = 1; i < e.getOperandCount(); i++) {
 						logger.debug("operand: " + abstractOperands[i]);
-						if(this.region == MemoryRegion.TOP
+						/*if(this.region == MemoryRegion.TOP
 								|| abstractOperands[i].getRegion() == MemoryRegion.TOP) {
 							this.region = MemoryRegion.TOP;
 							break;
-						}
+						}*/
 						if(this.region == MemoryRegion.GLOBAL)
 							this.region = abstractOperands[i].getRegion();
 						if(abstractOperands[i].getRegion() == MemoryRegion.TOP) {
 							this.ok = false;
-							this.top = true;
 							this.region = MemoryRegion.TOP;
 							logger.debug("Check for Region == TOP for " + abstractOperands[i]);
 							break;
@@ -394,7 +444,7 @@ public class BDDState implements AbstractState {
 					}
 				}
 				public boolean getOk() { return ok; }
-				public boolean getTop() { return top; }
+				public boolean getTop() { return this.region == MemoryRegion.TOP; }
 				public MemoryRegion getRegion() {
 					assert getOk();
 					return region;
@@ -447,7 +497,7 @@ public class BDDState implements AbstractState {
 						assert !result.getSet().isEmpty() : "Equal produced no result!?";
 						return result;
 					}
-					logger.info("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
+					logger.debug("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
 					return BDDSet.topBW(e.getBitWidth());
 					/*assert false : "EQUAL called on something crazy!";
 					break;*/
@@ -507,8 +557,18 @@ public class BDDState implements AbstractState {
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
 						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
-						for(int i = 1; i < e.getOperandCount(); i++)
-							res = res.bOr(abstractOperands[i].getSet());
+				//		logger.debug("base operand: "+ res + (abstractOperands[0].getSet().isFull()?" [full]":"[]"));
+						for(int i = 1; i < e.getOperandCount(); i++) {
+						//	logger.debug("next operand: "+ abstractOperands[i] + (abstractOperands[i].getSet().isFull()?" [full]":"[]"));
+							//IntLikeSet<Long, RTLNumber> set = abstractOperands[i].getSet();
+							//res = res.bOr(abstractOperands[i].getSet());
+							res = abstractOperands[i].getSet().bOr(res);
+						}
+					//	logger.debug("evaluated OR");
+
+					//	logger.debug("evaluated to full set: "+ res.isFull());
+					//	logger.debug("evaluated to region: "+ check.getRegion());
+					//	logger.debug("evaluated set of size: "+ res.sizeBigInt());
 						return new BDDSet(res, check.getRegion());
 					}
 					assert false : "OR called on something crazy";
@@ -602,7 +662,7 @@ public class BDDState implements AbstractState {
 									for(RTLNumber n2 : op.java()) {
 										RTLExpression n1muln2 = ExpressionFactory.createMultiply(n1, n2).evaluate(new Context());
 										assert n1muln2 instanceof RTLNumber : "No RTLNumber for result to multiplication!";
-										logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
+										//logger.info("adding a number... brace yourself! bitwidth of set : " + tmp.bits() + ", number: " + n1muln2.getBitWidth());
 										tmp = tmp.add((RTLNumber) n1muln2);
 									}
 								res = tmp;
@@ -615,8 +675,11 @@ public class BDDState implements AbstractState {
 					assert false : "MUL called on something crazy";
 					break;
 				case ROL:
-					assert false : "ROL not handled";
-				break;
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("ROL not handled, returning: " + ret);
+					return ret;
+				}
 				case ROR:
 					assert false : "ROR not handled";
 				break;
@@ -686,12 +749,9 @@ public class BDDState implements AbstractState {
 
 
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
-		logger.info("processing abstractPost(" + statement + ")");
-		logger.info("processing in state: " + this.toString());
+		logger.debug("start processing abstractPost(" + statement + ")");
 		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
-
-		return statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
-
+		Set<AbstractState> res = statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			private final Set<AbstractState> thisState() {
 				if(statement.getLabel() == null) logger.warn("No label: " + statement);
 				if(!statement.getLabel().getAddress().equals(statement.getNextLabel().getAddress())) {
@@ -721,6 +781,7 @@ public class BDDState implements AbstractState {
 				RTLExpression rhs = stmt.getRightHandSide();
 				BDDSet evaledRhs = abstractEval(rhs);
 
+				logger.debug("assigning "+ lhs + " to " + rhs);
 				// Check for stackpointer alignment assignments (workaround for gcc compiled files)
 				RTLVariable sp = Program.getProgram().getArchitecture().stackPointer();
 				if (lhs.equals(sp) && rhs instanceof RTLOperation) {
@@ -732,8 +793,11 @@ public class BDDState implements AbstractState {
 						logger.warn("Ignoring stackpointer alignment at " + stmt.getAddress());
 					}
 				}				
-
-				post.setValue(lhs, evaledRhs);				
+				logger.debug("assigning TOP: "+ evaledRhs.isTop());
+				logger.debug("assigning full set: "+ evaledRhs.getSet().isFull());
+				logger.debug("assigning region: "+ evaledRhs.getRegion());
+				post.setValue(lhs, evaledRhs);
+				logger.debug("completed assigning "+ lhs + " to " + evaledRhs);
 				return Collections.singleton((AbstractState) post);
 			}
 
@@ -763,7 +827,7 @@ public class BDDState implements AbstractState {
 			
 			@Override
 			public Set<AbstractState> visit(RTLAssume stmt) {
-				logger.info("Found RTLAssume: " + stmt);
+				logger.debug("Found RTLAssume: " + stmt);
 				BDDSet truthValue = abstractEval(stmt.getAssumption());
 
 				//if truthValue = False -> infeasible
@@ -771,7 +835,7 @@ public class BDDState implements AbstractState {
 				// else work to do!
 				if(truthValue.isSingleton()) {
 					if(truthValue.lessOrEqual(BDDSet.TRUE)) {
-						logger.info("truthValue TRUE for " + stmt + " (" + truthValue + ")");
+						logger.debug("truthValue TRUE for " + stmt + " (" + truthValue + ")");
 						return thisState();
 					} else {
 						logger.info(stmt.getLabel() + ", state ID " + getIdentifier() + ": Transformer " + stmt + " is infeasible.");
@@ -786,7 +850,7 @@ public class BDDState implements AbstractState {
 						RTLOperation operation = (RTLOperation) assumption;
 						switch(operation.getOperator()) {
 						case EQUAL:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								return visit(new RTLAssume(switchBinaryExp(operation), stmt.getSource()));
@@ -811,7 +875,7 @@ public class BDDState implements AbstractState {
 							}			
 							break;
 						case UNSIGNED_LESS_OR_EQUAL:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[0] instanceof RTLVariable
 									&& operation.getOperands()[1] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[0];
@@ -831,7 +895,7 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						case LESS_OR_EQUAL:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[1];
@@ -872,7 +936,7 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						case LESS:
-							logger.info("Handling RTLAssume: " + stmt);
+							logger.debug("Handling RTLAssume: " + stmt);
 							if(operation.getOperands()[1] instanceof RTLVariable
 							&& operation.getOperands()[0] instanceof RTLNumber) {
 								RTLVariable var = (RTLVariable) operation.getOperands()[1];
@@ -913,12 +977,12 @@ public class BDDState implements AbstractState {
 								return Collections.singleton((AbstractState) post);
 							}
 						default:
-							logger.info("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
+							logger.debug("XXX RTLAssume(" + operation + ") - we ignored that. An opportunity missed...");
 							break;
 						}
 					}
 				}
-				logger.info("Ignoring RTLAssume: " + stmt);
+				logger.debug("Ignoring RTLAssume: " + stmt);
 				return Collections.singleton((AbstractState) copyThisState());
 			}
 
@@ -1075,6 +1139,9 @@ public class BDDState implements AbstractState {
 			}
 
 		});
+		
+		logger.debug("finished abstractPost(" + statement + ") in state: " + this.toString() + " with result: " + res);
+		return res;
 	}
 
 
