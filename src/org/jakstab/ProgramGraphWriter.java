@@ -181,7 +181,10 @@ public class ProgramGraphWriter {
 						sb.append("unresolved");
 					} else {
 						boolean first = true;
-						for (CFAEdge e : targets) {
+						List<CFAEdge> l  = new ArrayList<CFAEdge>();
+						l.addAll(targets);
+						Collections.sort(l);
+						for (CFAEdge e : l) {
 							if (first) first = false;
 							else sb.append(", ");
 							sb.append(e.getTarget().getAddress());
@@ -194,7 +197,10 @@ public class ProgramGraphWriter {
 					Set<CFAEdge> referers = branchEdgesRev.get(pc);
 					sb.append("\t; from: ");
 					boolean first = true;
-					for (CFAEdge e : referers) {
+					List<CFAEdge> l  = new ArrayList<CFAEdge>();
+					l.addAll(referers);
+					Collections.sort(l);
+					for (CFAEdge e : l) {
 						if (first) first = false;
 						else sb.append(", ");
 						sb.append(e.getSource().getAddress());
