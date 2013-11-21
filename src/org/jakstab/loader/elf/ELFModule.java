@@ -111,6 +111,7 @@ public class ELFModule implements ExecutableImage {
 					pltRelocs = section.loadSectionData();
 			}
 		}
+try {
 		assert (pltRelocs != null);
 		
 		int pltIdx = (int)(pltSection.sh_offset);
@@ -193,6 +194,9 @@ public class ELFModule implements ExecutableImage {
 				break;
 			}
 		}
+} catch (Exception e) {
+ logger.error("XXX Ignored Exception while parsing ELF: " + e);
+}
 		
 	}
 	

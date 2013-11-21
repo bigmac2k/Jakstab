@@ -369,7 +369,6 @@ public class ControlFlowReconstruction implements Algorithm {
 			throw e;
 		} catch (AssertionError e) {
 			status = e.toString();
-			throw e;
 		} finally {
 			program.setCFA(transformerFactory.getCFA());
 			program.setUnresolvedBranches(transformerFactory.getUnresolvedBranches());
