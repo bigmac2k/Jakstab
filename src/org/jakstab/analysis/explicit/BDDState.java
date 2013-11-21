@@ -650,20 +650,29 @@ public class BDDState implements AbstractState {
 					assert false : "MUL called on something crazy";
 					break;
 				case ROL:
-					assert false : "ROL not handled";
-					break;
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("XXX: ROL not handled, returning: " + ret);
+					return ret;
+				}
 				case ROR:
 					assert false : "ROR not handled";
 					break;
 				case FSIZE:
-					assert false : "FSIZE not handled";
-					break;
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("XXX: FSIZE not handled, returning: " + ret);
+					return ret;
+				}
 				case FMUL:
 					assert false : "FMUL not handled";
 					break;
 				case FDIV:
-					assert false : "FDIV not handled";
-					break;
+				{
+					BDDSet ret = BDDSet.topBW(e.getBitWidth());
+					logger.debug("XXX: FDIV not handled, returning: " + ret);
+					return ret;
+				}
 				case DIV:
 					assert false : "DIV not handled";
 					break;
