@@ -793,7 +793,7 @@ public class BDDState implements AbstractState {
 				assert oper.getOperandCount() == 2 : "switchBinaryExp(" + oper + "): Wrong arity: " + oper.getOperandCount() + " but con only handle 2";
 				RTLExpression[] reversed = new RTLExpression[oper.getOperandCount()];
 				for(int i = 0; i < oper.getOperandCount(); i++)
-					reversed[i] = oper.getOperands()[oper.getOperandCount() - i];
+					reversed[i] = oper.getOperands()[oper.getOperandCount() - i - 1];
 				return (RTLOperation) ExpressionFactory.createOperation(oper.getOperator(), reversed);
 			}
 			
