@@ -471,7 +471,7 @@ public class BDDState implements AbstractState {
 				BDDSet op1;
 				BDDSet op2;
 				CheckResult check;
-
+     
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -679,6 +679,10 @@ public class BDDState implements AbstractState {
 					}
 					assert false : "MUL called on something crazy";
 					break;
+				}
+				logger.warn("XXX operator "+ e.getOperator() + " not handled in " + e);
+				return BDDSet.topBW(e.getBitWidth());
+					/*
 				case ROL:
 				{
 					BDDSet ret = BDDSet.topBW(e.getBitWidth());
@@ -730,7 +734,7 @@ public class BDDState implements AbstractState {
 				}
 				System.exit(1);
 				//To make eclipse happy... Here you are, stupid.
-				return null;
+				return null;*/
 			}
 
 			@Override

@@ -160,11 +160,8 @@ public class WSetAnalysis implements ConfigurableProgramAnalysis {
 						{
 							RTLNumber num = (RTLNumber) arhs;
 							if(num.longValue()>=0) {
-<<<<<<< HEAD
 								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0, num.getBitWidth()),num);
-=======
-								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0,num.getBitWidth()),num);
->>>>>>> bddstab
+
 								if (alhs instanceof RTLVariable) {
 									ValuationState post = new ValuationState(iState);
 									post.setVariableValue((RTLVariable)alhs,
