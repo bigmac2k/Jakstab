@@ -357,9 +357,14 @@ public class BDDState implements AbstractState {
 			if(abstractAddress.getRegion() != MemoryRegion.GLOBAL)
 				return BDDSet.topBW(m.getBitWidth());
 			BDDSet segmentValue = abstractEval(segmentReg);
-			// return top instead?
-			assert segmentValue.getSet().isEmpty() || !segmentValue.isSingleton() || segmentValue.randomElement().intValue() == 0 : "Segment " + segmentReg + " has been assigned a value!";
-			abstractAddress = new BDDSet(abstractAddress.getSet(), segmentValue.getRegion());
+			// segment register handling
+			//  - ok if segment is singleton of value 0
+			if (segmentValue.isSingleton() && segmentValue.randomElement().intValue() == 0) {
+				abstractAddress = new BDDSet(abstractAddress.getSet(), segmentValue.getRegion());
+			} else {
+				logger.warn("Segment " + segmentReg + " has been assigned a value!");
+				abstractAddress = BDDSet.topBW(abstractAddress.getBitWidth());
+			}
 		}
 		return abstractAddress;
 	}
@@ -821,7 +826,7 @@ public class BDDState implements AbstractState {
 				assert oper.getOperandCount() == 2 : "switchBinaryExp(" + oper + "): Wrong arity: " + oper.getOperandCount() + " but con only handle 2";
 				RTLExpression[] reversed = new RTLExpression[oper.getOperandCount()];
 				for(int i = 0; i < oper.getOperandCount(); i++)
-					reversed[i] = oper.getOperands()[oper.getOperandCount() - i -1];
+					reversed[i] = oper.getOperands()[oper.getOperandCount() - i - 1];
 				return (RTLOperation) ExpressionFactory.createOperation(oper.getOperator(), reversed);
 			}
 			
