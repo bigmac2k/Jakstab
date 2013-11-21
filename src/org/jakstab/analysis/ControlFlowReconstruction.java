@@ -367,6 +367,8 @@ public class ControlFlowReconstruction implements Algorithm {
 			// For other runtime exceptions (bugs in Jakstab), set the status to the name of the exception 
 			status = e.toString();
 			throw e;
+		} catch (AssertionError e) {
+			status = e.toString();
 		} finally {
 			program.setCFA(transformerFactory.getCFA());
 			program.setUnresolvedBranches(transformerFactory.getUnresolvedBranches());
