@@ -97,8 +97,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 				out.widen((BDDState) state);
 			}
 			System.out.println("Widen result: " + out);
-			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());*/
-			return Pair.create(s, (Precision) new BDDPrecision());
+			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
 		} else
 			return Pair.create(s, (Precision) prec.inc());
 	}
