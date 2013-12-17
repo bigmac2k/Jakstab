@@ -1,7 +1,8 @@
 package org.jakstab.analysis.explicit;
 
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,6 +19,7 @@ import org.jakstab.analysis.VariableValuation;
 import org.jakstab.cfa.Location;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.ExpressionVisitor;
+import org.jakstab.rtl.expressions.LongBWToRTLNumberCaster;
 import org.jakstab.rtl.expressions.Operator;
 import org.jakstab.rtl.expressions.RTLBitRange;
 import org.jakstab.rtl.expressions.RTLConditionalExpression;
@@ -25,6 +27,10 @@ import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLMemoryLocation;
 import org.jakstab.rtl.expressions.RTLNondet;
 import org.jakstab.rtl.expressions.RTLNumber;
+import org.jakstab.rtl.expressions.RTLNumberIsDynBounded;
+import org.jakstab.rtl.expressions.RTLNumberIsDynBoundedBits;
+import org.jakstab.rtl.expressions.RTLNumberIsOrdered;
+import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
 import org.jakstab.rtl.expressions.RTLOperation;
 import org.jakstab.rtl.expressions.RTLSpecialExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
@@ -47,8 +53,13 @@ import org.jakstab.util.MapMap.EntryIterator;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
+import org.jakstab.util.Either;
+import org.jakstab.util.Pair;
 
-import cc.sven.tlike.IntLikeSet;
+import java.util.Arrays;
+
+import cc.sven.constraint.*;
+import cc.sven.tlike.*;
 
 public class BDDState implements AbstractState {
 
@@ -826,6 +837,199 @@ public class BDDState implements AbstractState {
 				return Collections.singleton((AbstractState) post);
 			}
 			
+			class TranslationState {
+				private HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> backMap;
+				private HashMap<RTLVariable, Integer> varToMap;
+				private HashMap<RTLMemoryLocation, Integer> memToMap;
+				private HashMap<Integer, IntLikeSet<Long, RTLNumber>> valueMap;
+				private HashMap<Integer, MemoryRegion> regionMap;
+				private int counter;
+				public TranslationState(HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> bm, HashMap<RTLVariable, Integer> vm, HashMap<RTLMemoryLocation, Integer> mm, HashMap<Integer, IntLikeSet<Long, RTLNumber>> values, HashMap<Integer, MemoryRegion> regions, int c) {
+					this.backMap = bm;
+					this.varToMap = vm;
+					this.memToMap = mm;
+					this.valueMap = values;
+					this.regionMap = regions;
+					this.counter = c;
+				}
+				public TranslationState() {
+					this.backMap = new HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>>();
+					this.varToMap= new HashMap<RTLVariable, Integer>();
+					this.memToMap = new HashMap<RTLMemoryLocation, Integer>();
+					this.valueMap = new HashMap<Integer, IntLikeSet<Long, RTLNumber>>();
+					this.regionMap = new HashMap<Integer, MemoryRegion>();
+					this.counter = 0;
+				}
+				public int freshId() {
+					int res = counter;
+					counter += 1;
+					return res;
+				}
+				public HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> getBackMap() { return backMap; }
+				public HashMap<RTLVariable, Integer> getVarToMap() { return varToMap; }
+				public HashMap<RTLMemoryLocation, Integer> getMemToMap() { return memToMap; }
+				public HashMap<Integer, IntLikeSet<Long, RTLNumber>> getValueMap() { return valueMap; }
+				public HashMap<Integer, MemoryRegion> getRegionMap() { return regionMap; }
+				private void putValue(int k, BDDSet v) { 
+					valueMap.put(k, v.getSet());
+					regionMap.put(k, v.getRegion());
+				}
+				public int getId(Either<RTLVariable, RTLMemoryLocation> forWhat) {
+					Integer id;
+					if(forWhat.isLeft()) {
+						id = getVarToMap().get(forWhat.getLeft());
+						if(id == null) {
+							id = freshId();
+							varToMap.put(forWhat.getLeft(), id);
+							backMap.put(id, forWhat);
+						}
+					} else {
+						id = getMemToMap().get(forWhat.getRight());
+						if(id == null) {
+							id = freshId();
+							memToMap.put(forWhat.getRight(), id);
+							backMap.put(id, forWhat);
+						}
+					}
+					return id;
+				}
+				int addOperand(RTLExpression op) {
+					Integer id = null;
+					if(op instanceof RTLVariable) {
+						id = getId(new Either<RTLVariable, RTLMemoryLocation>((RTLVariable) op, null));
+						BDDSet value = BDDState.this.getValue((RTLVariable) op);
+						putValue(id, value);
+					} else if(op instanceof RTLMemoryLocation) {
+						id = getId(new Either<RTLVariable, RTLMemoryLocation>(null, (RTLMemoryLocation) op));
+						BDDSet addresses = BDDState.this.abstractEval(((RTLMemoryLocation) op).getAddress());
+						/*fold1
+						 * this reduction causes still more approximation since relations between addresses are lost (addr != addr)
+						 */
+						BDDSet value = null;
+						for(RTLNumber rtlnum : addresses.getSet().java()) {
+							if(value == null)
+								value = BDDSet.singleton(rtlnum);
+							else
+								value = value.join(BDDSet.singleton(rtlnum));
+						}
+						putValue(id, value);
+					} else if(op instanceof RTLNumber) {
+						id = freshId();
+						BDDSet value = BDDSet.singleton((RTLNumber) op);
+						putValue(id, value);
+					} else assert false : "Non-Handled conversion: " + op.getClass() + " " + op;
+					assert id != null;
+					return id;
+				}
+				@Override
+				public String toString() {
+					return "(BackMap: " + backMap + ", ValueMap: " + valueMap + ")";
+				}
+			}
+			
+			private RTLExpression convertBoolean(RTLExpression exp) {
+				if(exp instanceof RTLVariable && ((RTLVariable) exp).getBitWidth() == 1)
+					return ExpressionFactory.createEqual(exp, ExpressionFactory.TRUE);
+				return exp;
+			}
+			
+			//Todo translationState is mutable so it would not have to be threaded through?
+			@SuppressWarnings("unchecked")
+			private Pair<TranslationState, Constraint> buildConstraint(TranslationState translationState, Operator op, List<RTLExpression> elist) {
+				int elistSize = elist.size();
+				Constraint constraint;
+				int id1;
+				int id2;
+				RTLExpression ex1;
+				RTLExpression ex2;
+				RTLOperation op1;
+				RTLOperation op2;
+				Pair<TranslationState, Constraint> op1Res;
+				Pair<TranslationState, Constraint> op2Res;
+				switch(op) {
+				case EQUAL:
+				case LESS:
+				case LESS_OR_EQUAL:
+					assert elistSize == 2 : "Malformed comparison";
+					ex1 = elist.get(0);
+					ex2 = elist.get(1);
+					id1 = translationState.addOperand(ex1);
+					id2 = translationState.addOperand(ex2);
+					switch(op) {
+					case EQUAL:
+						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						break;
+					case LESS:
+						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						break;
+					default:
+						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						break;
+					}
+					return new Pair<TranslationState, Constraint>(translationState, constraint);
+				case AND:
+				case OR:
+					assert elistSize >= 2 : "Malformed connective";
+					if(elistSize == 2) {
+						ex1 = convertBoolean(elist.get(0));
+						ex2 = convertBoolean(elist.get(1));
+						assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+						assert ex2 instanceof RTLOperation : ex2 + " is " + ex2.getClass() + ". required: RTLOperation";
+						op1 = (RTLOperation) ex1;
+						op2 = (RTLOperation) ex2;
+						op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
+						op2Res = buildConstraint(op1Res.getLeft(), op2.getOperator(), Arrays.asList(op2.getOperands()));
+						switch(op) {
+						case AND:
+							constraint = Constraint$.MODULE$.createAnd(op1Res.getRight(), op2Res.getRight());
+							break;
+						default:
+							constraint = Constraint$.MODULE$.createOr(op1Res.getRight(), op2Res.getRight());
+							break;
+						}
+						return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
+					} else {
+						ex1 = convertBoolean(elist.get(0));
+						assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+						op1 = (RTLOperation) ex1;
+						op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
+						op2Res = buildConstraint(op1Res.getLeft(), op, elist.subList(1, elistSize));
+						constraint = Constraint$.MODULE$.createAnd(op1Res.getRight(), op2Res.getRight());
+						return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
+					}
+				case NOT:
+					assert elistSize == 1 : "Malformed not";
+					ex1 = convertBoolean(elist.get(0));
+					assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+					op1 = (RTLOperation) ex1;
+					op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
+					constraint = Constraint$.MODULE$.createNot(op1Res.getRight());
+					return new Pair<TranslationState, Constraint>(op1Res.getLeft(), constraint);
+				case XOR:
+					//TODO lift restriction to two operands
+					assert elistSize == 2 : "Malformed xor";
+					ex1 = convertBoolean(elist.get(0));
+					ex2 = convertBoolean(elist.get(1));
+					assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+					assert ex2 instanceof RTLOperation : ex2 + " is " + ex2.getClass() + ". required: RTLOperation";
+					op1 = (RTLOperation) ex1;
+					op2 = (RTLOperation) ex2;
+					op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
+					op2Res = buildConstraint(op1Res.getLeft(), op2.getOperator(), Arrays.asList(op2.getOperands()));
+					//not a and b or a and not b
+					constraint = Constraint$.MODULE$.createOr(
+							Constraint$.MODULE$.createAnd(Constraint$.MODULE$.createNot(op1Res.getRight()), op2Res.getRight())
+							,
+							Constraint$.MODULE$.createAnd(op1Res.getRight(), Constraint$.MODULE$.createNot(op2Res.getRight())));
+					return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
+				case UNSIGNED_LESS:
+				case UNSIGNED_LESS_OR_EQUAL:
+				default:
+					assert false : "Unhandled assume: " + op;
+					return null;
+				}
+			}
+			
 			private RTLOperation switchBinaryExp(RTLOperation oper) {
 				assert oper.getOperandCount() == 2 : "switchBinaryExp(" + oper + "): Wrong arity: " + oper.getOperandCount() + " but con only handle 2";
 				RTLExpression[] reversed = new RTLExpression[oper.getOperandCount()];
@@ -857,6 +1061,10 @@ public class BDDState implements AbstractState {
 
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
+						Pair<TranslationState, Constraint> converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+						logger.debug("==> Built constraint: " + converted + " from State: " + BDDState.this);
+						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().allValidJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+						logger.debug("==>> Valid: " + valid);
 						switch(operation.getOperator()) {
 						case EQUAL:
 							logger.debug("Handling RTLAssume: " + stmt);

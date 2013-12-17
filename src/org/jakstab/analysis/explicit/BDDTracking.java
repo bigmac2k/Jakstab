@@ -21,7 +21,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(BDDTracking.class);
-
+	
 	public static void register(AnalysisProperties p) {
 		p.setShortHand('z');
 		p.setName("Set Address Tracking");
@@ -51,8 +51,19 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public AbstractState merge(AbstractState s1, AbstractState s2,
 			Precision precision) {
+		logger.debug("merge with precision " + precision + " on states " + s1.getIdentifier() + " and " + s2.getIdentifier());
+		//states equal? s2 is old state (comes from reachedSet)
 		if(s2.lessOrEqual(s1)) return s1;
-		return CPAOperators.mergeJoin(s1, s2, precision);
+		BDDPrecision prec = (BDDPrecision) precision;
+		if(prec.getCount() >= 3) {
+			//widen
+			logger.debug("Will widen now");
+			BDDState result = ((BDDState) s2).widen((BDDState) s1);
+			assert(CPAOperators.mergeJoin(s1, s2, precision).lessOrEqual(result));
+			return result;
+		} else {
+			return CPAOperators.mergeJoin(s1, s2, precision);
+		}
 	}
 
 	@Override
@@ -63,6 +74,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public Pair<AbstractState, Precision> prec(AbstractState s,
 			Precision precision, ReachedSet reached) {
+		logger.debug("prec called on state " + s.getIdentifier());
 		//System.out.println("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
 		//System.out.println("PREC reached size: " + reached.size());
 		BDDPrecision prec = (BDDPrecision) precision;
@@ -84,7 +96,9 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 			for(AbstractState state : reached) {
 				out.widen((BDDState) state);
 			}
-			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
+			System.out.println("Widen result: " + out);
+			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());*/
+			return Pair.create(s, (Precision) new BDDPrecision());
 		} else
 			return Pair.create(s, (Precision) prec.inc());
 	}
