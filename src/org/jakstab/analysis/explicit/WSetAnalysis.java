@@ -159,7 +159,7 @@ public class WSetAnalysis implements ConfigurableProgramAnalysis {
 						{
 							RTLNumber num = (RTLNumber) arhs;
 							if(num.longValue()>=0) {
-								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0),num);
+								IntervalElement uLessInt = new IntervalElement(ExpressionFactory.createNumber(0,num.getBitWidth()),num);
 								if (alhs instanceof RTLVariable) {
 									ValuationState post = new ValuationState(iState);
 									post.setVariableValue((RTLVariable)alhs,
@@ -172,7 +172,7 @@ public class WSetAnalysis implements ConfigurableProgramAnalysis {
 									AbstractDomainElement evaledAddress = iState.abstractEval(m.getAddress());
 									post.setMemoryValue(evaledAddress, m.getBitWidth(), 
 											valueFactory.createAbstractValue(uLessInt.concretize())
-											.meet(iState.getVariableValue((RTLVariable)alhs)));
+											.meet(iState.getMemoryValue(evaledAddress, m.getBitWidth())));
 									return post;
 								}
 							}
