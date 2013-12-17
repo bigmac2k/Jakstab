@@ -17,6 +17,7 @@ import org.jakstab.analysis.VariableValuation;
 import org.jakstab.cfa.Location;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.ExpressionVisitor;
+import org.jakstab.rtl.expressions.LongBWToRTLNumberCaster;
 import org.jakstab.rtl.expressions.Operator;
 import org.jakstab.rtl.expressions.RTLBitRange;
 import org.jakstab.rtl.expressions.RTLConditionalExpression;
@@ -24,6 +25,10 @@ import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLMemoryLocation;
 import org.jakstab.rtl.expressions.RTLNondet;
 import org.jakstab.rtl.expressions.RTLNumber;
+import org.jakstab.rtl.expressions.RTLNumberIsDynBounded;
+import org.jakstab.rtl.expressions.RTLNumberIsDynBoundedBits;
+import org.jakstab.rtl.expressions.RTLNumberIsOrdered;
+import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
 import org.jakstab.rtl.expressions.RTLOperation;
 import org.jakstab.rtl.expressions.RTLSpecialExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
@@ -49,9 +54,10 @@ import org.jakstab.util.Logger;
 import org.jakstab.util.Either;
 import org.jakstab.util.Pair;
 
-import scala.actors.threadpool.Arrays;
+import java.util.Arrays;
+
 import cc.sven.constraint.*;
-import cc.sven.tlike.IntLikeSet;
+import cc.sven.tlike.*;
 
 public class BDDState implements AbstractState {
 	
@@ -796,34 +802,43 @@ public class BDDState implements AbstractState {
 			}
 			
 			class TranslationState {
-				HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> backMap;
-				HashMap<RTLVariable, Integer> varToMap;
-				HashMap<RTLMemoryLocation, Integer> memToMap;
-				HashMap<Integer, BDDSet> valueMap;
-				int counter;
-				public TranslationState(HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> bm, HashMap<RTLVariable, Integer> vm, HashMap<RTLMemoryLocation, Integer> mm, HashMap<Integer, BDDSet> values, int c) {
+				private HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> backMap;
+				private HashMap<RTLVariable, Integer> varToMap;
+				private HashMap<RTLMemoryLocation, Integer> memToMap;
+				private HashMap<Integer, IntLikeSet<Long, RTLNumber>> valueMap;
+				private HashMap<Integer, MemoryRegion> regionMap;
+				private int counter;
+				public TranslationState(HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> bm, HashMap<RTLVariable, Integer> vm, HashMap<RTLMemoryLocation, Integer> mm, HashMap<Integer, IntLikeSet<Long, RTLNumber>> values, HashMap<Integer, MemoryRegion> regions, int c) {
 					this.backMap = bm;
 					this.varToMap = vm;
 					this.memToMap = mm;
 					this.valueMap = values;
+					this.regionMap = regions;
 					this.counter = c;
 				}
 				public TranslationState() {
 					this.backMap = new HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>>();
 					this.varToMap= new HashMap<RTLVariable, Integer>();
 					this.memToMap = new HashMap<RTLMemoryLocation, Integer>();
-					this.valueMap = new HashMap<Integer, BDDSet>();
+					this.valueMap = new HashMap<Integer, IntLikeSet<Long, RTLNumber>>();
+					this.regionMap = new HashMap<Integer, MemoryRegion>();
+					this.counter = 0;
 				}
 				public int freshId() {
 					int res = counter;
 					counter += 1;
 					return res;
 				}
-				HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> getBackMap() { return backMap; }
-				HashMap<RTLVariable, Integer> getVarToMap() { return varToMap; }
-				HashMap<RTLMemoryLocation, Integer> getMemToMap() { return memToMap; }
-				void putValue(int k, BDDSet v) { valueMap.put(k, v); }
-				int getId(Either<RTLVariable, RTLMemoryLocation> forWhat) {
+				public HashMap<Integer, Either<RTLVariable, RTLMemoryLocation>> getBackMap() { return backMap; }
+				public HashMap<RTLVariable, Integer> getVarToMap() { return varToMap; }
+				public HashMap<RTLMemoryLocation, Integer> getMemToMap() { return memToMap; }
+				public HashMap<Integer, IntLikeSet<Long, RTLNumber>> getValueMap() { return valueMap; }
+				public HashMap<Integer, MemoryRegion> getRegionMap() { return regionMap; }
+				private void putValue(int k, BDDSet v) { 
+					valueMap.put(k, v.getSet());
+					regionMap.put(k, v.getRegion());
+				}
+				public int getId(Either<RTLVariable, RTLMemoryLocation> forWhat) {
 					Integer id;
 					if(forWhat.isLeft()) {
 						id = getVarToMap().get(forWhat.getLeft());
@@ -866,10 +881,20 @@ public class BDDState implements AbstractState {
 						id = freshId();
 						BDDSet value = BDDSet.singleton((RTLNumber) op);
 						putValue(id, value);
-					} else assert false : "Non-Handled conversion";
+					} else assert false : "Non-Handled conversion: " + op.getClass() + " " + op;
 					assert id != null;
 					return id;
 				}
+				@Override
+				public String toString() {
+					return "(BackMap: " + backMap + ", ValueMap: " + valueMap + ")";
+				}
+			}
+			
+			private RTLExpression convertBoolean(RTLExpression exp) {
+				if(exp instanceof RTLVariable && ((RTLVariable) exp).getBitWidth() == 1)
+					return ExpressionFactory.createEqual(exp, ExpressionFactory.TRUE);
+				return exp;
 			}
 			
 			//Todo translationState is mutable so it would not have to be threaded through?
@@ -889,9 +914,11 @@ public class BDDState implements AbstractState {
 				case EQUAL:
 				case LESS:
 				case LESS_OR_EQUAL:
-					assert elistSize == 2;
-					id1 = translationState.addOperand(elist.get(0));
-					id2 = translationState.addOperand(elist.get(1));
+					assert elistSize == 2 : "Malformed comparison";
+					ex1 = elist.get(0);
+					ex2 = elist.get(1);
+					id1 = translationState.addOperand(ex1);
+					id2 = translationState.addOperand(ex2);
 					switch(op) {
 					case EQUAL:
 						constraint = Constraint$.MODULE$.createEq(id1, id2);
@@ -906,12 +933,12 @@ public class BDDState implements AbstractState {
 					return new Pair<TranslationState, Constraint>(translationState, constraint);
 				case AND:
 				case OR:
-					assert elistSize >= 2;
+					assert elistSize >= 2 : "Malformed connective";
 					if(elistSize == 2) {
-						ex1 = elist.get(0);
-						ex2 = elist.get(1);
-						assert ex1 instanceof RTLOperation : "non-operation as child to and";
-						assert ex2 instanceof RTLOperation : "non-operation as child to and";
+						ex1 = convertBoolean(elist.get(0));
+						ex2 = convertBoolean(elist.get(1));
+						assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+						assert ex2 instanceof RTLOperation : ex2 + " is " + ex2.getClass() + ". required: RTLOperation";
 						op1 = (RTLOperation) ex1;
 						op2 = (RTLOperation) ex2;
 						op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
@@ -926,8 +953,8 @@ public class BDDState implements AbstractState {
 						}
 						return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
 					} else {
-						ex1 = elist.get(0);
-						assert ex1 instanceof RTLOperation : "non-operation as child to and";
+						ex1 = convertBoolean(elist.get(0));
+						assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
 						op1 = (RTLOperation) ex1;
 						op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
 						op2Res = buildConstraint(op1Res.getLeft(), op, elist.subList(1, elistSize));
@@ -935,21 +962,36 @@ public class BDDState implements AbstractState {
 						return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
 					}
 				case NOT:
-					assert elistSize == 1;
-					ex1 = elist.get(0);
-					assert ex1 instanceof RTLOperation : "non-operation as child to not";
+					assert elistSize == 1 : "Malformed not";
+					ex1 = convertBoolean(elist.get(0));
+					assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
 					op1 = (RTLOperation) ex1;
 					op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
 					constraint = Constraint$.MODULE$.createNot(op1Res.getRight());
 					return new Pair<TranslationState, Constraint>(op1Res.getLeft(), constraint);
+				case XOR:
+					//TODO lift restriction to two operands
+					assert elistSize == 2 : "Malformed xor";
+					ex1 = convertBoolean(elist.get(0));
+					ex2 = convertBoolean(elist.get(1));
+					assert ex1 instanceof RTLOperation : ex1 + " is " + ex1.getClass() + ". required: RTLOperation";
+					assert ex2 instanceof RTLOperation : ex2 + " is " + ex2.getClass() + ". required: RTLOperation";
+					op1 = (RTLOperation) ex1;
+					op2 = (RTLOperation) ex2;
+					op1Res = buildConstraint(translationState, op1.getOperator(), Arrays.asList(op1.getOperands()));
+					op2Res = buildConstraint(op1Res.getLeft(), op2.getOperator(), Arrays.asList(op2.getOperands()));
+					//not a and b or a and not b
+					constraint = Constraint$.MODULE$.createOr(
+							Constraint$.MODULE$.createAnd(Constraint$.MODULE$.createNot(op1Res.getRight()), op2Res.getRight())
+							,
+							Constraint$.MODULE$.createAnd(op1Res.getRight(), Constraint$.MODULE$.createNot(op2Res.getRight())));
+					return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
 				case UNSIGNED_LESS:
 				case UNSIGNED_LESS_OR_EQUAL:
-				case XOR:
 				default:
-					assert false;
+					assert false : "Unhandled assume: " + op;
+					return null;
 				}
-				assert false;
-				return null;
 			}
 			
 			private RTLOperation switchBinaryExp(RTLOperation oper) {
@@ -983,6 +1025,10 @@ public class BDDState implements AbstractState {
 					
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
+						Pair<TranslationState, Constraint> converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+						logger.debug("==> Built constraint: " + converted + " from State: " + BDDState.this);
+						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().allValidJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+						logger.debug("==>> Valid: " + valid);
 						switch(operation.getOperator()) {
 						case EQUAL:
 							logger.debug("Handling RTLAssume: " + stmt);
