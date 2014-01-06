@@ -1069,8 +1069,11 @@ public class BDDState implements AbstractState {
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
 								post.setValue(var, oldValue.meet(value));
 							} if(exp instanceof RTLMemoryLocation) {
-								assert false : "TODO";
-								//RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
+								RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
+								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
+								BDDSet oldValue = post.getMemoryValue(evaledAddress, memLoc.getBitWidth());
+								BDDSet newValue = oldValue.meet(value);
+								post.setMemoryValue(evaledAddress, memLoc.getBitWidth(), newValue);
 							} if(exp instanceof RTLOperation) {
 								RTLOperation op = (RTLOperation) exp;
 								if(specialCaseBAndSingleton(op)) {
