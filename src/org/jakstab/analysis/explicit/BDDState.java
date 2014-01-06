@@ -312,7 +312,7 @@ public class BDDState implements AbstractState {
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
 				logger.debug("widening memory chell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
-				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+				result.abstractMemoryTable.setTop(region);//.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
 		
@@ -397,12 +397,15 @@ public class BDDState implements AbstractState {
 			@Override
 			public BDDSet visit(RTLConditionalExpression e) {
 				BDDSet abstractCondition = e.getCondition().accept(this);
+				logger.debug("abstr cond: " + abstractCondition);
 				BDDSet result = BDDSet.empty(e.getBitWidth());
 				if(BDDSet.TRUE.lessOrEqual(abstractCondition)) {
+					logger.debug("true branch");
 					BDDSet abstractTrue = e.getTrueExpression().accept(this);
 					result = result.join(abstractTrue);
 				}
 				if(BDDSet.FALSE.lessOrEqual(abstractCondition)) {
+					logger.debug("false branch");
 					BDDSet abstractFalse = e.getFalseExpression().accept(this);
 					result = result.join(abstractFalse);
 				}
@@ -475,8 +478,12 @@ public class BDDState implements AbstractState {
 			public BDDSet visit(RTLOperation e) {
 				BDDSet[] abstractOperands = new BDDSet[e.getOperandCount()];
 
-				for(int i = 0; i < e.getOperandCount(); i++)
+				for(int i = 0; i < e.getOperandCount(); i++) {
 					abstractOperands[i] = e.getOperands()[i].accept(this);
+					if(abstractOperands[i].getSet().isEmpty()) {
+					logger.error("found EMPTY Set for op #"+i+" in operation: "+e);
+				}
+				}
 
 				BDDSet op0;
 				BDDSet op1;
@@ -506,11 +513,14 @@ public class BDDState implements AbstractState {
 							&& op0.getRegion() == op1.getRegion()
 							&& op0.getBitWidth() == op1.getBitWidth()) {
 						BDDSet result = BDDSet.empty(1);
+						logger.debug("op0" + op0);
+						logger.debug("op1" + op1);
+						logger.debug(op0.getSet().intersect(op1.getSet()));
 						if(!op0.getSet().intersect(op1.getSet()).isEmpty())
 							result = result.join(BDDSet.TRUE);
 						if(!op0.getSet().invert().intersect(op1.getSet()).isEmpty())
 							result = result.join(BDDSet.FALSE);
-						assert !result.getSet().isEmpty() : "Equal produced no result!?";
+						assert !result.getSet().isEmpty() : "Equal"+e+" produced no result!?";
 						return result;
 					}
 					logger.debug("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
@@ -763,6 +773,14 @@ public class BDDState implements AbstractState {
 
 		BDDSet result = e.accept(visitor);
 
+
+			if(result.getSet().isEmpty()) {
+				logger.error("found EMPTY Set as result for operation: "+e);
+logger.error(e.getClass());
+				logger.error("state: "+ BDDState.this);
+				assert false;
+			}
+		
 		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		return result;
 	}
@@ -801,6 +819,8 @@ public class BDDState implements AbstractState {
 				RTLExpression rhs = stmt.getRightHandSide();
 				BDDSet evaledRhs = abstractEval(rhs);
 
+
+				assert!evaledRhs.getSet().isEmpty();
 				logger.debug("assigning "+ lhs + " to " + rhs);
 				// Check for stackpointer alignment assignments (workaround for gcc compiled files)
 				RTLVariable sp = Program.getProgram().getArchitecture().stackPointer();
@@ -815,6 +835,8 @@ public class BDDState implements AbstractState {
 				}				
 				logger.debug("assigning TOP: "+ evaledRhs.isTop());
 				logger.debug("assigning full set: "+ evaledRhs.getSet().isFull());
+				logger.debug("assigning EMPTY set: "+ evaledRhs.getSet().isEmpty());
+				assert!evaledRhs.getSet().isEmpty();
 				logger.debug("assigning region: "+ evaledRhs.getRegion());
 				post.setValue(lhs, evaledRhs);
 				logger.debug("completed assigning "+ lhs + " to " + evaledRhs);
@@ -917,6 +939,8 @@ public class BDDState implements AbstractState {
 						id = freshId();
 						BDDSet value = BDDSet.singleton((RTLNumber) op);
 						putValue(id, value);
+					} else if(op instanceof RTLOperation) {
+					    
 					} else assert false : "Non-Handled conversion: " + op.getClass() + " " + op;
 					assert id != null;
 					return id;
@@ -960,10 +984,10 @@ public class BDDState implements AbstractState {
 						constraint = Constraint$.MODULE$.createEq(id1, id2);
 						break;
 					case LESS:
-						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						constraint = Constraint$.MODULE$.createLT(id1, id2);
 						break;
 					default:
-						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						constraint = Constraint$.MODULE$.createLTE(id1, id2);
 						break;
 					}
 					return new Pair<TranslationState, Constraint>(translationState, constraint);
@@ -1024,6 +1048,21 @@ public class BDDState implements AbstractState {
 					return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
 				case UNSIGNED_LESS:
 				case UNSIGNED_LESS_OR_EQUAL:
+// XXX arne TODO FIXME copied from signed version => surely not what we want!
+					assert elistSize == 2 : "Malformed comparison";
+					ex1 = elist.get(0);
+					ex2 = elist.get(1);
+					id1 = translationState.addOperand(ex1);
+					id2 = translationState.addOperand(ex2);
+					switch(op) {
+					case UNSIGNED_LESS:
+						constraint = Constraint$.MODULE$.createLT(id1, id2);
+						break;
+					default:
+						constraint = Constraint$.MODULE$.createLTE(id1, id2);
+						break;
+					}
+					return new Pair<TranslationState, Constraint>(translationState, constraint);
 				default:
 					assert false : "Unhandled assume: " + op;
 					return null;
@@ -1061,10 +1100,18 @@ public class BDDState implements AbstractState {
 
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
+						try {
 						Pair<TranslationState, Constraint> converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
 						logger.debug("==> Built constraint: " + converted + " from State: " + BDDState.this);
 						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().allValidJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
 						logger.debug("==>> Valid: " + valid);
+						} catch (Exception e) {
+							logger.error("Exception in contraint system: "+e + " while processing: " + stmt);
+							e.printStackTrace();
+						}catch (AssertionError e) {
+							logger.error("Assertion failed in contraint system: "+e+ " while processing: " + stmt);
+							e.printStackTrace();
+						}
 						switch(operation.getOperator()) {
 						case EQUAL:
 							logger.debug("Handling RTLAssume: " + stmt);

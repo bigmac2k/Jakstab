@@ -689,7 +689,7 @@ public final class BasedNumberValuation implements AbstractState {
 
 				return Collections.singleton((AbstractState)post);
 			}
-
+			
 			@Override
 			public Set<AbstractState> visit(RTLDealloc stmt) {
 				BasedNumberValuation post = copyThisState();

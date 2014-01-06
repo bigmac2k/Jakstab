@@ -146,7 +146,7 @@ try {
 
 			// Where the function pointer is to be stored
 			AbsoluteAddress pltSlot = new AbsoluteAddress((((X86MemoryOperand)jmpToFunction.getBranchDestination())).getDisplacement());
-			//logger.debug("Address of memory trampoline is " + pltSlot + 
+			//logger.debug("Address of memory trampoline is " + pltSlokernel/pistachio-ia32-0.4/i586-kernelt + 
 			//		", file offset 0x" + Long.toHexString(getFilePointer(pltSlot)));
 			// Before loading, there's a trampoline pointer back to the following push instruction stored in this slot
 			inBuf.seek(getFilePointer(pltSlot));
@@ -195,7 +195,9 @@ try {
 			}
 		}
 } catch (Exception e) {
- logger.error("XXX Ignored Exception while parsing ELF: " + e);
+    logger.error("XXX Ignored Exception while parsing ELF: " + e);
+} catch (AssertionError e) {
+	logger.error("XXX Ignored Assertion while parsing ELF: " + e);
 }
 		
 	}

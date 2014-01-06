@@ -91,12 +91,14 @@ public class PredicateAbstractionState implements AbstractState {
 
 		List<byte[]> allsat = predicates.allsat();
 		
+		logger.debug("predicates: " + PredicateMap.predicateString(predicates));
 		for (byte[] assignment : allsat) {
 			RTLExpression clause = null;
 			for (int i=0; i < assignment.length; i++) {
+
+				if (assignment[i] < 0) continue; 
 				RTLExpression p = PredicateMap.getPredicate(i);
 				
-				if (assignment[i] < 0) continue; 
 				if (assignment[i] == 0) p = ExpressionFactory.createNot(p); 
 				
 				if (clause == null) clause = p;

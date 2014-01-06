@@ -58,7 +58,10 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		if(prec.getCount() >= 3) {
 			//widen
 			logger.debug("Will widen now");
-			BDDState result = ((BDDState) s2).widen((BDDState) s1);
+			BDDState result = ((BDDState) s2).widen((BDDState) s1).join(s1).join(s2);
+			logger.debug("s1: " + s1);logger.debug("s2: " + s2);
+			logger.debug("result: " + result);
+			logger.debug("check: " + CPAOperators.mergeJoin(s1, s2, precision));
 			assert(CPAOperators.mergeJoin(s1, s2, precision).lessOrEqual(result));
 			return result;
 		} else {
