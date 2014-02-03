@@ -944,10 +944,10 @@ public class BDDState implements AbstractState {
 						constraint = Constraint$.MODULE$.createEq(id1, id2);
 						break;
 					case LESS:
-						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						constraint = Constraint$.MODULE$.createLt(id1, id2);
 						break;
 					default:
-						constraint = Constraint$.MODULE$.createEq(id1, id2);
+						constraint = Constraint$.MODULE$.createLte(id1, id2);
 						break;
 					}
 					return new Pair<TranslationState, Constraint>(translationState, constraint);
@@ -1049,7 +1049,7 @@ public class BDDState implements AbstractState {
 						
 						Pair<TranslationState, Constraint> converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
 						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
-						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().allValidJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
 						logger.debug("==>> Valid: " + valid);
 						TranslationState tState = converted.getLeft();
 						BDDState post = copyThisState();
