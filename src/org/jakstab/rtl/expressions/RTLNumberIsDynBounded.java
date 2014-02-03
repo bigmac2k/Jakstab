@@ -5,19 +5,20 @@ import cc.sven.bounded.DynBounded;
 public class RTLNumberIsDynBounded implements DynBounded<RTLNumber> {
 	public RTLNumber dMinBound(RTLNumber n) {
 		int bits = n.getBitWidth();
-		long l = 0;
+		//XXX SCM this reverses order for booleans - seems fishy
 		if(bits == 1)
-			return ExpressionFactory.createNumber(-1, 1);
-		for(int i = 0; i < bits - 1; bits += 1) {
-			l |= (1L << i);
-		}
-		return ExpressionFactory.createNumber(l, bits);
+			return ExpressionFactory.FALSE;
+		if(bits == 64)
+			return ExpressionFactory.createNumber(Long.MIN_VALUE, 64);
+		return ExpressionFactory.createNumber(-(1L << (bits - 1)), bits);
 	}
 	public RTLNumber dMaxBound(RTLNumber n) {
 		int bits = n.getBitWidth();
+		//XXX SCM this reverses order for booleans - seems fishy
 		if(bits == 1)
-			return ExpressionFactory.createNumber(0, 1);
-		long l = 1L << (bits - 1);
-		return ExpressionFactory.createNumber(l, bits);
+			return ExpressionFactory.TRUE;
+		if(bits == 64)
+			return ExpressionFactory.createNumber(Long.MAX_VALUE, 64);
+		return ExpressionFactory.createNumber((1L << (bits - 1)) - 1, bits);
 	}
 }
