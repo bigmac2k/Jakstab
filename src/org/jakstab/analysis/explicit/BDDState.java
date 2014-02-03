@@ -301,7 +301,7 @@ public class BDDState implements AbstractState {
 				logger.debug("widening variable " + key + " that had value " + value + " because of " + otherValue);
 				result.abstractVarTable.setTop(key);
 			}
-		}		
+		}
 		
 		//XXX broken - does not select anything to widen
 		for(EntryIterator<MemoryRegion, Long, BDDSet> iter = abstractMemoryTable.entryIterator(); iter.hasEntry(); iter.next()) {

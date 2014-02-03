@@ -57,8 +57,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		final int limit = 50;
 		if(getSet().isFull())
 			return "(" + region + " | " + getBitWidth() + " | ANYNUM)";
-		if(getSet().sizeGreaterThan(limit))
-			return "(" + region + " | " + getBitWidth() +  " | ...)";
+		/*if(getSet().sizeGreaterThan(limit))
+			return "(" + region + " | " + getBitWidth() +  " | ...)";*/
 		return "(" + region + " | " + getBitWidth() + " | " + getSet() + ")";
 	}
 	

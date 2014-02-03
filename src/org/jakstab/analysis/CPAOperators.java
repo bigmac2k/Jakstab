@@ -48,6 +48,8 @@ public final class CPAOperators {
 	}
 
 	public static boolean stopJoin(AbstractState s, ReachedSet reached, Precision precision) {
+		//System.out.println("stopJoin(" + s + ", " + reached + ", " + precision + " == (reached: " + reached.isEmpty() + ", s.lessOrEqual: " +  s.lessOrEqual(Lattices.joinAll(reached)) + ")");
+		//return true;
 		if (reached.isEmpty()) return false;
 		return s.lessOrEqual(Lattices.joinAll(reached));
 	}

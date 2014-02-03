@@ -160,6 +160,8 @@ public class CPAAlgorithm implements Algorithm {
 		long lastSteps = 0;
 		long lastTime = 0;
 		while (!worklist.isEmpty() && !stop && (!failFast || isSound())) {
+			
+			logger.debug("Working with worklist: " + worklist);
 
 			statesVisited++;
 			if (++steps == stepThreshold) {
@@ -209,7 +211,7 @@ public class CPAAlgorithm implements Algorithm {
 			precision = pair.getRight();
 			precisionMap.put(a.getLocation(), precision);
 			
-			//logger.debug("Picked from worklist: " + a.getIdentifier());
+			logger.debug("Picked from worklist: " + a.getIdentifier());
 			
 			// getTransformers() and post() might throw exceptions
 			try {
@@ -233,11 +235,11 @@ public class CPAAlgorithm implements Algorithm {
 						continue;
 					}
 					
-					//logger.debug("via edge " + cfaEdge.toString() + " " + successors.size() + " successors.");
+					logger.debug("via edge " + cfaEdge.toString() + " " + successors.size() + " successors.");
 					
 					// Process every successor
 					for (AbstractState succ : successors) {
-						//logger.debug("Processing new post state: " + succ.getIdentifier());
+						logger.debug("Processing new post state: " + succ.getIdentifier());
 
 						// Try to merge the new state with an existing one 
 						Set<AbstractState> statesToRemove = new FastSet<AbstractState>();
@@ -247,6 +249,8 @@ public class CPAAlgorithm implements Algorithm {
 							AbstractState merged = cpa.merge(succ, r, targetPrecision);
 							if (!merged.equals(r)) {
 								//logger.debug("Merge of " + succ.getIdentifier() + " and " + r.getIdentifier() + " produced new state " + merged.getIdentifier());
+								//logger.debug("widen: merge of " + r + " and " + succ);
+								//assert false;
 								statesToRemove.add(r);
 								statesToAdd.add(merged);
 							}
@@ -262,6 +266,7 @@ public class CPAAlgorithm implements Algorithm {
 						for (AbstractState r : statesToAdd) {
 							// Only add r to the worklist if it hasn't been reached yet
 							if (reached.add(r)) {
+								logger.debug("CPAAlgorithm: adding r to worklist because not in reached: " + r);
 								worklist.add(r);
 								if (art != null) art.addChild(unadjustedState, r);
 							}
@@ -287,6 +292,13 @@ public class CPAAlgorithm implements Algorithm {
 			if(failFast && !isSound() && Options.errorTrace.getValue()) {
 				throw new ControlFlowException(a,"failed fast");
 			}
+			
+			//DEEEBUG debug!
+			/*try {
+				System.in.read();
+			} catch (IOException e) {
+				assert false;
+			}*/
 		}
 		long endTime = System.currentTimeMillis();
 		if (endTime - startTime > 0) {
