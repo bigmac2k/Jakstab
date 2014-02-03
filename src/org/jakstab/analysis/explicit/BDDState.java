@@ -1074,10 +1074,10 @@ logger.error(e.getClass());
 					id2 = translationState.addOperand(ex2);
 					switch(op) {
 					case UNSIGNED_LESS:
-						constraint = Constraint$.MODULE$.createLT(id1, id2);
+						constraint = Constraint$.MODULE$.createLt(id1, id2);
 						break;
 					default:
-						constraint = Constraint$.MODULE$.createLTE(id1, id2);
+						constraint = Constraint$.MODULE$.createLte(id1, id2);
 						break;
 					}
 					return new Pair<TranslationState, Constraint>(translationState, constraint);
