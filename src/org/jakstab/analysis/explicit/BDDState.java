@@ -143,7 +143,6 @@ public class BDDState implements AbstractState {
 
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
-		logger.debug(".");
 		BDDState that = (BDDState) l;
 		if(this == that) return true;
 		if(that.isTop() || isBot()) return true;
@@ -1127,7 +1126,6 @@ logger.error(e.getClass());
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
 							MemoryRegion region = tState.getRegionMap().get(id);
 							BDDSet value = new BDDSet(intlikeset, region);
-							logger.debug(entry.getKey());
 							RTLExpression exp = entry.getValue();
 							assert exp != null : "exp == null";
 							assert value != null : "value == null";
