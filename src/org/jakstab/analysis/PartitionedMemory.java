@@ -410,7 +410,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		}
 		
 		// Other direction for global region only
-		if (store.containsLeftKey(MemoryRegion.GLOBAL)) {
+		/*if (store.containsLeftKey(MemoryRegion.GLOBAL)) {
 			for (Map.Entry<Long, MemoryCell> entry : store.getSubMap(MemoryRegion.GLOBAL).entrySet()) {
 				long offset = entry.getKey();
 				if (offset != entry.getValue().offset) continue;
@@ -419,7 +419,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 				if (!other.get(MemoryRegion.GLOBAL, offset, bitWidth).lessOrEqual(value))
 					return false;
 			}
-		}
+		}*/
 
 		return true;
 	}
