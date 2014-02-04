@@ -143,6 +143,7 @@ public class BDDState implements AbstractState {
 
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
+		logger.debug(".");
 		BDDState that = (BDDState) l;
 		if(this == that) return true;
 		if(that.isTop() || isBot()) return true;
@@ -311,8 +312,10 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
-				logger.debug("widening memory chell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
-				result.abstractMemoryTable.setTop(region);//.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+				logger.debug("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
+				//XXX arne: what to do, what to do...
+				result.abstractMemoryTable.setTop(region);
+				//result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
 		
@@ -1109,7 +1112,13 @@ logger.error(e.getClass());
 
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
-						Pair<TranslationState, Constraint> converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+						Pair<TranslationState, Constraint> converted;
+						try{
+							converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+						} catch (AssertionError e) {
+							logger.debug("failed to build constraint for: " + assumption + " with: " + e.getMessage());
+							return Collections.emptySet();
+						}
 						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
 						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
 						logger.debug("==>> Valid: " + valid);
@@ -1120,6 +1129,7 @@ logger.error(e.getClass());
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
 							MemoryRegion region = tState.getRegionMap().get(id);
 							BDDSet value = new BDDSet(intlikeset, region);
+							logger.debug(entry.getKey());
 							RTLExpression exp = entry.getValue();
 							assert exp != null : "exp == null";
 							assert value != null : "value == null";
@@ -1129,7 +1139,7 @@ logger.error(e.getClass());
 								BDDSet oldValue = getValue(var);
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
-								post.setValue(var, oldValue.meet(value));
+								post.setValue(var, newValue);
 							} if(exp instanceof RTLMemoryLocation) {
 								RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
 								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
