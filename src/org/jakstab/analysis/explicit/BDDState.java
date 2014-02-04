@@ -313,9 +313,7 @@ public class BDDState implements AbstractState {
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
 				logger.debug("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
-				//XXX arne: what to do, what to do...
-				result.abstractMemoryTable.setTop(region);
-				//result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
 		
