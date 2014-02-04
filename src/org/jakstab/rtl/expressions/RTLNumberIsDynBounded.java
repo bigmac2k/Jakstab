@@ -21,4 +21,20 @@ public class RTLNumberIsDynBounded implements DynBounded<RTLNumber> {
 			return ExpressionFactory.createNumber(Long.MAX_VALUE, 64);
 		return ExpressionFactory.createNumber((1L << (bits - 1)) - 1, bits);
 	}
+	public RTLNumber dMaxNeg(RTLNumber n) {
+		int bits = n.getBitWidth();
+		//XXX SCM this reverses order for booleans - seems fishy
+		if(bits == 1)
+			return ExpressionFactory.FALSE;
+		if(bits == 64)
+			return ExpressionFactory.createNumber(-1L, 64);
+		return ExpressionFactory.createNumber((1L << bits) - 1, bits);
+	}
+	public RTLNumber dMinNotNeg(RTLNumber n) {
+		int bits = n.getBitWidth();
+		//XXX SCM this reverses order for booleans - seems fishy
+		if(bits == 1)
+			return ExpressionFactory.TRUE;
+		return ExpressionFactory.createNumber(0L, bits);
+	}
 }
