@@ -990,6 +990,8 @@ logger.error(e.getClass());
 				case EQUAL:
 				case LESS:
 				case LESS_OR_EQUAL:
+				case UNSIGNED_LESS:
+				case UNSIGNED_LESS_OR_EQUAL:
 					assert elistSize == 2 : "Malformed comparison";
 					ex1 = elist.get(0);
 					assert rtlExpOkForRelOp(ex1) : "First operand (" + ex1 + ") not ok for " + op;
@@ -1004,8 +1006,12 @@ logger.error(e.getClass());
 					case LESS:
 						constraint = Constraint$.MODULE$.createLt(id1, id2);
 						break;
+					case LESS_OR_EQUAL:
+						constraint = Constraint$.MODULE$.createLte(id1,  id2);
+					case UNSIGNED_LESS:
+						constraint = Constraint$.MODULE$.createULt(id1, id2);
 					default:
-						constraint = Constraint$.MODULE$.createLte(id1, id2);
+						constraint = Constraint$.MODULE$.createULte(id1, id2);
 						break;
 					}
 					return new Pair<TranslationState, Constraint>(translationState, constraint);
@@ -1064,23 +1070,6 @@ logger.error(e.getClass());
 							,
 							Constraint$.MODULE$.createAnd(op1Res.getRight(), Constraint$.MODULE$.createNot(op2Res.getRight())));
 					return new Pair<TranslationState, Constraint>(op2Res.getLeft(), constraint);
-				case UNSIGNED_LESS:
-				case UNSIGNED_LESS_OR_EQUAL:
-// XXX arne TODO FIXME copied from signed version => surely not what we want!
-					assert elistSize == 2 : "Malformed comparison";
-					ex1 = elist.get(0);
-					ex2 = elist.get(1);
-					id1 = translationState.addOperand(ex1);
-					id2 = translationState.addOperand(ex2);
-					switch(op) {
-					case UNSIGNED_LESS:
-						constraint = Constraint$.MODULE$.createLt(id1, id2);
-						break;
-					default:
-						constraint = Constraint$.MODULE$.createLte(id1, id2);
-						break;
-					}
-					return new Pair<TranslationState, Constraint>(translationState, constraint);
 				default:
 					assert false : "Unhandled assume: " + op;
 					return null;
