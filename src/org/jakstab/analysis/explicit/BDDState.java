@@ -1008,8 +1008,10 @@ logger.error(e.getClass());
 						break;
 					case LESS_OR_EQUAL:
 						constraint = Constraint$.MODULE$.createLte(id1,  id2);
+						break;
 					case UNSIGNED_LESS:
 						constraint = Constraint$.MODULE$.createULt(id1, id2);
+						break;
 					default:
 						constraint = Constraint$.MODULE$.createULte(id1, id2);
 						break;
