@@ -910,16 +910,7 @@ logger.error(e.getClass());
 					} else if(op instanceof RTLMemoryLocation) {
 						int id = getId(op);
 						BDDSet addresses = BDDState.this.abstractEval(((RTLMemoryLocation) op).getAddress());
-						/*fold1
-						 * this reduction causes still more approximation since relations between addresses are lost (addr != addr)
-						 */
-						BDDSet value = null;
-						for(RTLNumber rtlnum : addresses.getSet().java()) {
-							if(value == null)
-								value = BDDSet.singleton(rtlnum);
-							else
-								value = value.join(BDDSet.singleton(rtlnum));
-						}
+						BDDSet value = getMemoryValue(addresses, op.getBitWidth());
 						putValue(id, value);
 						return id;
 					} else if(op instanceof RTLNumber) {
