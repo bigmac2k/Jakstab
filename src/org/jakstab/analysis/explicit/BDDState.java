@@ -1132,6 +1132,7 @@ logger.error(e.getClass());
 								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
 								BDDSet oldValue = post.getMemoryValue(evaledAddress, memLoc.getBitWidth());
 								BDDSet newValue = oldValue.meet(value);
+								if(newValue.getSet().isEmpty()) return Collections.emptySet();
 								post.setMemoryValue(evaledAddress, memLoc.getBitWidth(), newValue);
 							} if(exp instanceof RTLOperation) {
 								RTLOperation op = (RTLOperation) exp;
