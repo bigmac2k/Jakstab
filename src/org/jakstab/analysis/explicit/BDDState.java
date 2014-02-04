@@ -314,8 +314,8 @@ public class BDDState implements AbstractState {
 			if(!value.equals(otherValue)) {
 				logger.debug("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
 				//XXX arne: what to do, what to do...
-				result.abstractMemoryTable.setTop(region);
-				//result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
+				//result.abstractMemoryTable.setTop(region);
+				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
 		
@@ -492,7 +492,7 @@ public class BDDState implements AbstractState {
 				BDDSet op1;
 				BDDSet op2;
 				CheckResult check;
-     
+     try {
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -699,11 +699,18 @@ public class BDDState implements AbstractState {
 								res = res.mul(prec, op);
 							}
 						}
+						logger.debug("MUL returned: " + new BDDSet(res, check.getRegion()));
 						return new BDDSet(res, check.getRegion());
 					}
 					assert false : "MUL called on something crazy";
 					break;
 				}
+     } catch (AssertionError f) {
+    	 logger.error("assertion failed while handling operation: " + e + " message: " + f.getMessage());
+
+			return BDDSet.topBW(e.getBitWidth());
+    	 
+     }
 				logger.warn("XXX operator "+ e.getOperator() + " not handled in " + e);
 				return BDDSet.topBW(e.getBitWidth());
 					/*
@@ -777,12 +784,11 @@ public class BDDState implements AbstractState {
 		BDDSet result = e.accept(visitor);
 
 
-			if(result.getSet().isEmpty()) {
-				logger.error("found EMPTY Set as result for operation: "+e);
-logger.error(e.getClass());
-				logger.error("state: "+ BDDState.this);
-				assert false;
-			}
+		if(result.getSet().isEmpty()) {
+			logger.error("found EMPTY Set as result for operation: "+e);
+			logger.error(e.getClass());
+			logger.error("state: "+ BDDState.this);
+		}
 		
 		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		return result;
@@ -1113,17 +1119,21 @@ logger.error(e.getClass());
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
 						Pair<TranslationState, Constraint> converted;
+						Map<Integer, IntLikeSet<Long, RTLNumber>> valid;
+						BDDState post = copyThisState();
 						try{
 							converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+							logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
+							valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+							logger.debug("==>> Valid: " + valid);
+						} catch (Exception e) {
+							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							return thisState();
 						} catch (AssertionError e) {
-							logger.debug("failed to build constraint for: " + assumption + " with: " + e.getMessage());
-							return Collections.emptySet();
+							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							return thisState();
 						}
-						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
-						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
-						logger.debug("==>> Valid: " + valid);
 						TranslationState tState = converted.getLeft();
-						BDDState post = copyThisState();
 						for(Map.Entry<Integer, RTLExpression> entry : tState.getBackMap().entrySet()) {
 							int id = entry.getKey();
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
@@ -1145,6 +1155,7 @@ logger.error(e.getClass());
 								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
 								BDDSet oldValue = post.getMemoryValue(evaledAddress, memLoc.getBitWidth());
 								BDDSet newValue = oldValue.meet(value);
+								if(newValue.getSet().isEmpty()) return Collections.emptySet();
 								post.setMemoryValue(evaledAddress, memLoc.getBitWidth(), newValue);
 							} if(exp instanceof RTLOperation) {
 								RTLOperation op = (RTLOperation) exp;
