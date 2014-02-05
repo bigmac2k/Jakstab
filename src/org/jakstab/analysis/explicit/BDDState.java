@@ -1140,15 +1140,16 @@ public class BDDState implements AbstractState {
 								BDDSet oldValue = getValue(var);
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
+								logger.debug("Constr: " + var + " = " + newValue + ", value: " + value + ", oldValue: " + oldValue);
 								post.setValue(var, newValue);
-							} if(exp instanceof RTLMemoryLocation) {
+							} else if(exp instanceof RTLMemoryLocation) {
 								RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
 								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
 								BDDSet oldValue = post.getMemoryValue(evaledAddress, memLoc.getBitWidth());
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
 								post.setMemoryValue(evaledAddress, memLoc.getBitWidth(), newValue);
-							} if(exp instanceof RTLOperation) {
+							} else if(exp instanceof RTLOperation) {
 								RTLOperation op = (RTLOperation) exp;
 								if(specialCaseBAndSingleton(op)) {
 									//XXX may be possible to lift this restriction
@@ -1188,6 +1189,7 @@ public class BDDState implements AbstractState {
 								} else logger.debug("Constraint System: Unhandled special case (" + exp + ") during restriction");
 							} else logger.debug("Constraint System: Unhandled type (" + exp.getClass() + ") during restriction");
 						}
+						logger.debug("new state from Constraint System:" + post);
 						return Collections.singleton((AbstractState) post);
 						
 //						//XXX
