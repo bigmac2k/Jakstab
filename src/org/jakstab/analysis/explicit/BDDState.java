@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.jakstab.Options;
 import org.jakstab.Program;
 import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.AbstractState;
@@ -489,7 +490,8 @@ public class BDDState implements AbstractState {
 				BDDSet op1;
 				BDDSet op2;
 				CheckResult check;
-     try {
+				
+				try {
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -701,12 +703,12 @@ public class BDDState implements AbstractState {
 					assert false : "MUL called on something crazy";
 					break;
 				}
-     } catch (AssertionError f) {
-    	 logger.error("assertion failed while handling operation: " + e + " message: " + f.getMessage());
-
-			return BDDSet.topBW(e.getBitWidth());
-    	 
-     }
+     			} catch (AssertionError f) {
+     				logger.error("assertion failed while handling operation: " + e + " message: " + f.getMessage());
+     				if(Options.failFast.getValue()) throw f;
+     				return BDDSet.topBW(e.getBitWidth());
+     			}
+     
 				logger.warn("XXX operator "+ e.getOperator() + " not handled in " + e);
 				return BDDSet.topBW(e.getBitWidth());
 					/*
@@ -1115,16 +1117,15 @@ public class BDDState implements AbstractState {
 							logger.debug("==>> Valid: " + valid);
 						} catch (Exception e) {
 							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							if(Options.failFast.getValue()) throw e;
 							return thisState();
 						} catch (AssertionError e) {
 							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							if(Options.failFast.getValue()) throw e;
 							return thisState();
 						}
-						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
-						valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
-						logger.debug("==>> Valid: " + valid);
+						
 						TranslationState tState = converted.getLeft();
-						post = copyThisState();
 						for(Map.Entry<Integer, RTLExpression> entry : tState.getBackMap().entrySet()) {
 							int id = entry.getKey();
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
