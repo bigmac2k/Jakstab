@@ -1121,10 +1121,10 @@ public class BDDState implements AbstractState {
 							return thisState();
 						}
 						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
-						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+						valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
 						logger.debug("==>> Valid: " + valid);
 						TranslationState tState = converted.getLeft();
-						BDDState post = copyThisState();
+						post = copyThisState();
 						for(Map.Entry<Integer, RTLExpression> entry : tState.getBackMap().entrySet()) {
 							int id = entry.getKey();
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
