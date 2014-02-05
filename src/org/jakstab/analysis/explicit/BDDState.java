@@ -489,7 +489,7 @@ public class BDDState implements AbstractState {
 				BDDSet op1;
 				BDDSet op2;
 				CheckResult check;
-     
+     try {
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -701,6 +701,12 @@ public class BDDState implements AbstractState {
 					assert false : "MUL called on something crazy";
 					break;
 				}
+     } catch (AssertionError f) {
+    	 logger.error("assertion failed while handling operation: " + e + " message: " + f.getMessage());
+
+			return BDDSet.topBW(e.getBitWidth());
+    	 
+     }
 				logger.warn("XXX operator "+ e.getOperator() + " not handled in " + e);
 				return BDDSet.topBW(e.getBitWidth());
 					/*
@@ -774,12 +780,11 @@ public class BDDState implements AbstractState {
 		BDDSet result = e.accept(visitor);
 
 
-			if(result.getSet().isEmpty()) {
-				logger.error("found EMPTY Set as result for operation: "+e);
-logger.error(e.getClass());
-				logger.error("state: "+ BDDState.this);
-				assert false;
-			}
+		if(result.getSet().isEmpty()) {
+			logger.error("found EMPTY Set as result for operation: "+e);
+			logger.error(e.getClass());
+			logger.error("state: "+ BDDState.this);
+		}
 		
 		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
 		return result;
@@ -1101,11 +1106,19 @@ logger.error(e.getClass());
 					if(assumption instanceof RTLOperation) {
 						RTLOperation operation = (RTLOperation) assumption;
 						Pair<TranslationState, Constraint> converted;
+						Map<Integer, IntLikeSet<Long, RTLNumber>> valid;
+						BDDState post = copyThisState();
 						try{
 							converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
+							logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
+							valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+							logger.debug("==>> Valid: " + valid);
+						} catch (Exception e) {
+							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							return thisState();
 						} catch (AssertionError e) {
-							logger.debug("failed to build constraint for: " + assumption + " with: " + e.getMessage());
-							return Collections.emptySet();
+							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							return thisState();
 						}
 						logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
 						Map<Integer, IntLikeSet<Long, RTLNumber>> valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
