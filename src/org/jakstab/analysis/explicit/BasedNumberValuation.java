@@ -382,6 +382,7 @@ public final class BasedNumberValuation implements AbstractState {
 					if (!stringAddress.getRegion().equals(MemoryRegion.TOP) && !stringAddress.isNumberTop()) {
 						String formatString = getCString(stringAddress.getRegion(), stringAddress.getNumber().longValue());
 						if(formatString!= null) {
+							try{
 							logger.debug("printf called with format string " + formatString.trim());
 							StringBuilder sb = new StringBuilder();
 							int varArgCount = 0;
@@ -418,6 +419,9 @@ public final class BasedNumberValuation implements AbstractState {
 							sb.append(formatString.substring(lastMatch));
 							logger.info("DEBUG: printf output: " + sb.toString());
 							return new BasedNumberElement(firstArg.getNumber());
+							} catch (Exception f) {
+								logger.error("Exception while evaluating printf: " + f);
+							}
 						}
 					}
 				}
@@ -542,9 +546,11 @@ public final class BasedNumberValuation implements AbstractState {
 						}
 						// STRING_LENGTH_CHECK assumptions are ecx == 0 or !(ecx == 0)
 						RTLOperation operation = (RTLOperation)stmt.getAssumption();
-						if (operation.getOperator() == Operator.EQUAL) {
-							assert operation.getOperands()[0] == arch.loopCounter();
-							assert ((RTLNumber)operation.getOperands()[1]).longValue() == 0;
+						if (operation.getOperator() == Operator.EQUAL 
+								&& operation.getOperands()[0] == arch.loopCounter() // was assert
+								&& ((RTLNumber)operation.getOperands()[1]).longValue() == 0 // was assert
+								) {
+							// XXX arne: moved asserts into if => do we need an else branch?
 							post.setValue(arch.loopCounter(), abstractEval(operation.getOperands()[1]));
 						}
 						
