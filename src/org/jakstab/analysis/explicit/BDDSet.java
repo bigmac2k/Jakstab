@@ -226,7 +226,12 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public BDDSet meet(LatticeElement l) {
 		assert l instanceof BDDSet;
 		BDDSet that = (BDDSet) l;
-		MemoryRegion nRegion = getRegion().join(that.getRegion());
+		//XXX is GLOBAL correct? used in assertion; no BOT region
+		MemoryRegion nRegion = MemoryRegion.GLOBAL;
+		if(getRegion().isTop())
+			nRegion = that.getRegion();
+		else if(that.getRegion().isTop() || that.getRegion() == this.getRegion())
+			nRegion = getRegion();
 		if(nRegion == MemoryRegion.TOP || getBitWidth() != that.getBitWidth()) {
 			return topBW(Math.max(getBitWidth(), that.getBitWidth()));
 		}

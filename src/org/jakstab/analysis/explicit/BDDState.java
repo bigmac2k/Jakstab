@@ -1,5 +1,6 @@
 package org.jakstab.analysis.explicit;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -895,11 +896,37 @@ public class BDDState implements AbstractState {
 				public HashMap<RTLExpression, Integer> getExpToMap() { return expToMap; }
 				public HashMap<Integer, IntLikeSet<Long, RTLNumber>> getValueMap() { return valueMap; }
 				public HashMap<Integer, MemoryRegion> getRegionMap() { return regionMap; }
-				private void putValue(int k, BDDSet v) { 
+				private MemoryRegion reduceRegion(FastSet<MemoryRegion> regions) {
+					//fold1
+					MemoryRegion result = MemoryRegion.TOP;
+					for(MemoryRegion r : regions) {
+						if(result.isTop() || result == r)
+							result = r;
+						else if(!r.isTop())
+							result = MemoryRegion.TOP;
+					}
+					return result;
+				}
+				private BDDSet expToValue(RTLExpression op) {
+					if(op instanceof RTLVariable)
+						return BDDState.this.getValue((RTLVariable) op);
+					else if(op instanceof RTLMemoryLocation) {
+						BDDSet addresses = BDDState.this.abstractEval(((RTLMemoryLocation) op).getAddress());
+						return getMemoryValue(addresses, op.getBitWidth());
+					} else if(op instanceof RTLNumber)
+						return BDDSet.singleton((RTLNumber) op);
+					else
+						return BDDSet.topBW(op.getBitWidth());
+				}
+				private void putValue(int k, BDDSet v, MemoryRegion region) { 
+					//set must be the same if looked up twice - therefore update is ok
 					valueMap.put(k, v.getSet());
-					regionMap.put(k, v.getRegion());
+					//region must be set to new "joined" region
+					regionMap.put(k, region);
 				}
 				private int getId(RTLExpression forWhat) {
+					if(forWhat instanceof RTLNumber)
+						return freshId();
 					Integer id = getExpToMap().get(forWhat);
 					if(id == null) {
 						id = freshId();
@@ -908,31 +935,27 @@ public class BDDState implements AbstractState {
 					}
 					return id;
 				}
-				public int addOperand(RTLExpression op) {
-					if(op instanceof RTLVariable) {
+				public List<Integer> addOperandGroup(List<RTLExpression> ops) {
+					//Pair<RTLExpression, BDDSet>[] values = new Pair<RTLExpression, BDDSet>[ops.length]; does not work for some reason
+					//want map function...
+					ArrayList<Pair<BDDSet, Integer>> values = new ArrayList<Pair<BDDSet, Integer>>(ops.size());
+					FastSet<MemoryRegion> regions = new FastSet<MemoryRegion>();
+					for(RTLExpression op : ops) {
+						BDDSet value = expToValue(op);
 						int id = getId(op);
-						BDDSet value = BDDState.this.getValue((RTLVariable) op);
-						putValue(id, value);
-						return id;
-					} else if(op instanceof RTLMemoryLocation) {
-						int id = getId(op);
-						BDDSet addresses = BDDState.this.abstractEval(((RTLMemoryLocation) op).getAddress());
-						BDDSet value = getMemoryValue(addresses, op.getBitWidth());
-						putValue(id, value);
-						return id;
-					} else if(op instanceof RTLNumber) {
-						int id = freshId();
-						BDDSet value = BDDSet.singleton((RTLNumber) op);
-						putValue(id, value);
-						return id;
-					} else {
-						//assert false : "Non-Handled conversion: " + op.getClass() + " " + op;
-						int id = getId(op);
-						//XXX top?
-						BDDSet value = BDDSet.topBW(op.getBitWidth());
-						putValue(id, value);
-						return id;
+						MemoryRegion knownRegion = getRegionMap().get(id);
+						if(knownRegion != null)
+							regions.add(knownRegion);
+						regions.add(value.getRegion());
+						values.add(new Pair<BDDSet, Integer>(value, id));
 					}
+					MemoryRegion region = reduceRegion(regions);
+					ArrayList<Integer> ids = new ArrayList<Integer>(values.size());
+					for(Pair<BDDSet, Integer> pair : values) {
+						putValue(pair.getRight(), pair.getLeft(), region);
+						ids.add(pair.getRight());
+					}
+					return ids;
 				}
 				@Override
 				public String toString() {
@@ -976,6 +999,7 @@ public class BDDState implements AbstractState {
 			private Pair<TranslationState, Constraint> buildConstraint(TranslationState translationState, Operator op, List<RTLExpression> elist) {
 				int elistSize = elist.size();
 				Constraint constraint;
+				List<Integer> idList;
 				int id1;
 				int id2;
 				RTLExpression ex1;
@@ -995,8 +1019,9 @@ public class BDDState implements AbstractState {
 					assert rtlExpOkForRelOp(ex1) : "First operand (" + ex1 + ") not ok for " + op;
 					ex2 = elist.get(1);
 					assert rtlExpOkForRelOp(ex2) : "Second operand (" + ex2 + ") not ok for " + op;
-					id1 = translationState.addOperand(ex1);
-					id2 = translationState.addOperand(ex2);
+					idList = translationState.addOperandGroup(elist);
+					id1 = idList.get(0);
+					id2 = idList.get(1);
 					switch(op) {
 					case EQUAL:
 						constraint = Constraint$.MODULE$.createEq(id1, id2);
@@ -1130,8 +1155,12 @@ public class BDDState implements AbstractState {
 							int id = entry.getKey();
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
 							MemoryRegion region = tState.getRegionMap().get(id);
-							BDDSet value = new BDDSet(intlikeset, region);
 							RTLExpression exp = entry.getValue();
+							if(region.isTop()){
+								logger.debug("Region top from Constraint System. Skipping: " + id + " = " + exp);
+								continue;
+							}
+							BDDSet value = new BDDSet(intlikeset, region);
 							assert exp != null : "exp == null";
 							assert value != null : "value == null";
 							assert region != null : "region == null";
