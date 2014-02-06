@@ -158,7 +158,7 @@ public class Main {
 		if (slashIdx < 0) slashIdx = baseFileName.lastIndexOf('/');
 		if (slashIdx < 0) slashIdx = -1;
 		slashIdx++;
-		stats.record(baseFileName.substring(slashIdx));
+		stats.record(Options.mainFilename);
 		stats.record(version);
 
 
