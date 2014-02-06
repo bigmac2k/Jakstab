@@ -393,7 +393,18 @@ public class BDDState implements AbstractState {
 
 				if(!(abstractFirst.hasUniqueConcretization() && abstractLast.hasUniqueConcretization()))
 					return BDDSet.topBW(e.getBitWidth());
-				return abstractOperand.bitExtract(abstractFirst.randomElement().intValue(), abstractLast.randomElement().intValue());
+				RTLNumber loRTL = abstractFirst.randomElement();
+				RTLNumber hiRTL = abstractLast.randomElement();
+				long loLong = loRTL.longValue();
+				long hiLong = hiRTL.longValue();
+				int lo = loRTL.intValue();
+				int hi = hiRTL.intValue();
+				if(!((long) lo == loLong)
+				|| !((long) hi == hiLong)
+				|| !(lo >= 0)
+				|| !(hi >= 0))
+					return BDDSet.topBW(e.getBitWidth());
+				return abstractOperand.bitExtract(lo, hi);
 			}
 
 			@Override
