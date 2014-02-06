@@ -696,7 +696,8 @@ public class BDDState implements AbstractState {
 						for(int i = 1; i < e.getOperandCount(); i++) {
 							//TODO SCM : in here, i must adjust bitwidth of res.
 							IntLikeSet<Long, RTLNumber> op = abstractOperands[i].getSet();
-							if(!res.sizeGreaterThan(maxk) && !op.sizeGreaterThan(maxk)) {
+							//XXX SCM the then branch should not have to exist - mul for up to maxk now does the same.
+							/*if(!res.sizeGreaterThan(maxk) && !op.sizeGreaterThan(maxk)) {
 								IntLikeSet<Long, RTLNumber> tmp = BDDSet.empty(check.getBitWidth() * 2, check.getRegion()).getSet();
 								for(RTLNumber n1 : res.java())
 									for(RTLNumber n2 : op.java()) {
@@ -706,9 +707,9 @@ public class BDDState implements AbstractState {
 										tmp = tmp.add((RTLNumber) n1muln2);
 									}
 								res = tmp;
-							} else {
-								res = res.mul(prec, op);
-							}
+							} else {*/
+								res = res.mul(maxk, prec, op);
+							//}
 						}
 						return new BDDSet(res, check.getRegion());
 					}
