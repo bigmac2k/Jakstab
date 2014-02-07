@@ -1176,7 +1176,7 @@ public class BDDState implements AbstractState {
 							return thisState();
 						} catch (AssertionError e) {
 							logger.error("failed to build constraint for: " + assumption + " with: " + e);
-							if(Options.failFast.getValue()) throw e;
+							if(Options.failFast.getValue() && Options.debug.getValue()) throw e;
 							return thisState();
 						}
 						
