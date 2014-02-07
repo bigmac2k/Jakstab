@@ -1007,10 +1007,30 @@ public class BDDState implements AbstractState {
 						RTLExpression ex1 = op.getOperands()[0];
 						RTLExpression ex2 = op.getOperands()[1];
 						//one singleton, one variable
+						//XXX also allow memory Access?
 						//XXX also allow proper singleton (instead of just RTLNumber)?
 						boolean res = (ex1 instanceof RTLNumber && ex2 instanceof RTLVariable) || (ex2 instanceof RTLNumber && ex1 instanceof RTLVariable);
 						if(res)
 							logger.debug("Constraint System: Hit special case for bitwise and singleton: " + exp);
+						return res;
+					}
+				}
+				return false;
+			}
+			
+			private boolean specialCaseAddSingleton(RTLExpression exp) {
+				if(exp instanceof RTLOperation) {
+					RTLOperation op = (RTLOperation) exp;
+					if(op.getOperator() == Operator.PLUS
+							&& op.getOperandCount() == 2) {
+						RTLExpression ex1 = op.getOperands()[0];
+						RTLExpression ex2 = op.getOperands()[1];
+						//one singleton, one variable
+						//XXX also allow memory Access?
+						//XXX also allow proper singleton (instead of just RTLNumber)?
+						boolean res = (ex1 instanceof RTLNumber && ex2 instanceof RTLVariable) || (ex2 instanceof RTLNumber && ex1 instanceof RTLVariable);
+						if(res)
+							logger.debug("Constrint System: Hit special case for plus and singleton: " + exp);
 						return res;
 					}
 				}
@@ -1022,7 +1042,8 @@ public class BDDState implements AbstractState {
 					|| exp instanceof RTLMemoryLocation
 					|| exp instanceof RTLNumber
 					//Special cases:
-					|| specialCaseBAndSingleton(exp);
+					|| specialCaseBAndSingleton(exp)
+					|| specialCaseAddSingleton(exp);
 			}
 			
 			//Todo translationState is mutable so it would not have to be threaded through?
@@ -1199,7 +1220,6 @@ public class BDDState implements AbstractState {
 								BDDSet oldValue = getValue(var);
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
-								logger.debug("Constr: " + var + " = " + newValue + ", value: " + value + ", oldValue: " + oldValue);
 								post.setValue(var, newValue);
 							} else if(exp instanceof RTLMemoryLocation) {
 								RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
@@ -1245,7 +1265,20 @@ public class BDDState implements AbstractState {
 											} else return Collections.emptySet();
 										}
 									} else logger.debug("Constraint System: Skipping restriction for specialCaseBAndSingleton (" + exp + ")");
-								} else logger.debug("Constraint System: Unhandled special case (" + exp + ") during restriction");
+								} else if(specialCaseAddSingleton(op)) {
+									RTLNumber constant;
+									RTLVariable var;
+									if(op.getOperands()[0] instanceof RTLNumber) {
+										constant = (RTLNumber) op.getOperands()[0];
+										var = (RTLVariable) op.getOperands()[1];
+									} else {
+										constant = (RTLNumber) op.getOperands()[1];
+										var = (RTLVariable) op.getOperands()[0];
+									}
+									BDDSet newValue = value.plus(BDDSet.singleton(constant).negate());
+									if(newValue.getSet().isEmpty()) return Collections.emptySet();
+									post.setValue(var, newValue);
+								}else logger.debug("Constraint System: Unhandled special case (" + exp + ") during restriction");
 							} else logger.debug("Constraint System: Unhandled type (" + exp.getClass() + ") during restriction");
 						}
 						logger.debug("new state from Constraint System:" + post);
