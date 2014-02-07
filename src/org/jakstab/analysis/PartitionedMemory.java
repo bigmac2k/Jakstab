@@ -84,7 +84,6 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		}
 	}
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(PartitionedMemory.class);
 	
 	private final LazyHashMapMap<MemoryRegion, Long, MemoryCell> store;
@@ -195,6 +194,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			MemoryCell cell = new MemoryCell(offset, size, value);
 			for (int i=0; i<size; i++) {
 				store.put(region, offset + i, cell);
+				System.out.println("i : " + i + " put " + cell + " at region " + region + " and offset " + Long.toHexString(offset + i) + "; result: " + store.get(region, offset + i) + " smart result: " + get(region, offset + i, bitWidth));
 			}
 		}
 	}
@@ -351,8 +351,12 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 	@SuppressWarnings("unchecked")
 	@Override
 	public PartitionedMemory<A> join(LatticeElement l) {
+		System.out.println("\n\n((((((((((Join\n");
 		PartitionedMemory<A> other = (PartitionedMemory<A>)l;
 		PartitionedMemory<A> result = new PartitionedMemory<A>(valueFactory);
+		
+		//global data region was set to top if one of the operands had it set to top already
+		result.dataIsTop = dataIsTop || other.dataIsTop;
 
 		// Join memory valuations. For the global region, we need to do both directions, 
 		// because constant image data is not present in store, but only visible
@@ -363,8 +367,10 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 				if (offset != entry.getValue().offset) continue;
 				int bitWidth = entry.getValue().size * 8;
 				A value = entry.getValue().contents;
+				A valueToSet = (A)value.join(other.get(MemoryRegion.GLOBAL, offset, bitWidth));
 				result.set(MemoryRegion.GLOBAL, offset, bitWidth, 
-						(A)value.join(other.get(MemoryRegion.GLOBAL, offset, bitWidth)));
+						valueToSet);
+				System.out.println("join reversed: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
 			}
 		}
 
@@ -374,11 +380,52 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			MemoryRegion region = entryIt.getLeftKey();
 			int bitWidth = entryIt.getValue().size * 8;
 			A value = entryIt.getValue().contents;
+			A othergot = this.get(region, offset, bitWidth);
+			A valueToSet = (A)value.join(othergot);
 			result.set(region, offset, bitWidth, 
-					(A)value.join(this.get(region, offset, bitWidth)));
-			
+					valueToSet);
+			System.out.println("join normal: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
 		}
 
+		System.out.println("op1: " + this + "\n\nop2: " + l + "\n\nres: " + result + "\n\nthis <= result: " + this.lessOrEqual(result) + "\nthat <= result: " + l.lessOrEqual(result));
+		
+		FastSet<Pair<MemoryRegion, Long>> keys = new FastSet<Pair<MemoryRegion, Long>>();
+		for(EntryIterator<MemoryRegion, Long, MemoryCell> entryIt = store.entryIterator(); entryIt.hasEntry(); entryIt.next()) {
+			long offset = entryIt.getRightKey();
+			System.out.println("offset: " + Long.toHexString(offset) + " cellOffset: " + Long.toHexString(entryIt.getValue().offset));
+			if (offset != entryIt.getValue().offset) continue;
+			MemoryRegion region = entryIt.getLeftKey();
+			keys.add(new Pair<MemoryRegion, Long>(region, offset));
+		}
+		System.out.println("keys: " + keys);
+		
+		if(!(this.lessOrEqual(result) && l.lessOrEqual(result))) {
+		for(Pair<MemoryRegion, Long> pair : keys) {
+			MemoryCell thisMemCell = store.get(pair.getLeft(), pair.getRight());
+			MemoryCell thatMemCell = other.store.get(pair.getLeft(), pair.getRight());
+			MemoryCell resuMemCell = result.store.get(pair.getLeft(), pair.getRight());
+			System.out.println();
+			if(thisMemCell == null)
+				System.out.println(pair.getLeft() + " this: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + dataIsTop);
+			else
+				System.out.println(pair.getLeft() + " this: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thisMemCell.offset) + "[" + thisMemCell.size + "]  = " + thisMemCell.contents + " <= " + get(pair.getLeft(), pair.getRight(), thisMemCell.size * 8));
+			if(thatMemCell == null)
+				System.out.println(pair.getLeft() + " that: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + other.dataIsTop);
+			else
+				System.out.println(pair.getLeft() + " that: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thatMemCell.offset) + "[" + thatMemCell.size + "]  = " + thatMemCell.contents + " <= " + other.get(pair.getLeft(), pair.getRight(), thatMemCell.size * 8));
+			if(resuMemCell == null)
+				System.out.println(pair.getLeft() + " resu: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + result.dataIsTop);
+			else
+				System.out.println(pair.getLeft() + " resu: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(resuMemCell.offset) + "[" + resuMemCell.size + "]  = " + resuMemCell.contents + " <= " + result.get(pair.getLeft(), pair.getRight(), resuMemCell.size * 8));
+		}
+		System.out.println("((\nthis <= result");
+		this.lessOrEqual(result);
+		System.out.println("that <= result");
+		other.lessOrEqual(result);
+		System.out.println("))");
+		}
+		System.out.println("))))))))))\n");
+		assert(this.lessOrEqual(result) && l.lessOrEqual(result));
 		return result;
 	}
 	
@@ -406,6 +453,28 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			MemoryRegion region = entryIt.getLeftKey();
 			int bitWidth = entryIt.getValue().size * 8;
 			AbstractValue value = entryIt.getValue().contents;
+			AbstractValue otherValue = get(region, offset, bitWidth);
+			if (!otherValue.lessOrEqual(value))
+				System.out.println("normal direction fail: " + Long.toHexString(offset) + ": " + otherValue + " <= " + value + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
+		}
+		
+		if (store.containsLeftKey(MemoryRegion.GLOBAL)) {
+			for (Map.Entry<Long, MemoryCell> entry : store.getSubMap(MemoryRegion.GLOBAL).entrySet()) {
+				long offset = entry.getKey();
+				if (offset != entry.getValue().offset) continue;
+				int bitWidth = entry.getValue().size * 8;
+				A value = entry.getValue().contents;
+				A otherValue = other.get(MemoryRegion.GLOBAL, offset, bitWidth);
+				if (!value.lessOrEqual(otherValue))
+					System.out.println("reversed direction fail: " + Long.toHexString(offset) + ": " + value + " <= " + otherValue + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
+			}
+		}
+		for (EntryIterator<MemoryRegion, Long, MemoryCell> entryIt = other.store.entryIterator(); entryIt.hasEntry(); entryIt.next()) {
+			long offset = entryIt.getRightKey();
+			if (offset != entryIt.getValue().offset) continue;
+			MemoryRegion region = entryIt.getLeftKey();
+			int bitWidth = entryIt.getValue().size * 8;
+			AbstractValue value = entryIt.getValue().contents;
 			if (!get(region, offset, bitWidth).lessOrEqual(value))
 				return false;
 		}
@@ -421,7 +490,10 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		// range) whether its value is less or equal than the value of that element in 
 		// "other". If one isn't less or equal, this means that element is still not in 
 		// other's store map and has a non-initial value in this's store map (TOP or just 
-		// another value).		
+		// another value).
+		
+
+		
 		if (store.containsLeftKey(MemoryRegion.GLOBAL)) {
 			for (Map.Entry<Long, MemoryCell> entry : store.getSubMap(MemoryRegion.GLOBAL).entrySet()) {
 				long offset = entry.getKey();

@@ -224,6 +224,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		return new BDDSet(getSet().union(that.getSet()), nRegion);
 	}
 	
+	/*BUG: meet of (Top, Top) (Bot, Bot) should be (Bot, Bot) not (top, ...)*/
 	public BDDSet meet(LatticeElement l) {
 		assert l instanceof BDDSet;
 		BDDSet that = (BDDSet) l;
