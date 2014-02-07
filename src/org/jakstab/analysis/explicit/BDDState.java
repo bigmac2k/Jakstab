@@ -341,6 +341,7 @@ public class BDDState implements AbstractState {
 
 	private BDDSet getMemoryValue(BDDSet pointer, int bitWidth) {
 		//XXX like in the original - if pointer.getRegion() == MemoryRegion.TOP -> assert false...
+		logger.debug("memory access for: " + pointer + " bw: " + bitWidth);
 		if(pointer.isTop() || pointer.getSet().isFull())
 			return BDDSet.topBW(bitWidth);
 		if(pointer.getRegion() == MemoryRegion.TOP)
@@ -351,6 +352,7 @@ public class BDDState implements AbstractState {
 		//the following is again essentially a fold1...
 		BDDSet result = null;
 		for(RTLNumber rtlnum : pointer.getSet().java()) {
+			//logger.debug("accessing at: " + pointer.getRegion() + ", " + rtlnum.intValue());
 			BDDSet values = abstractMemoryTable.get(pointer.getRegion(), rtlnum.intValue(), bitWidth);
 			if(result == null)
 				result = BDDSet.empty(values.getBitWidth(), values.getRegion());
@@ -359,6 +361,7 @@ public class BDDState implements AbstractState {
 				return BDDSet.topBW(result.getBitWidth());
 			result = new BDDSet(result.getSet().union(values.getSet()), result.getRegion());
 		}
+		logger.debug("memory access result: " + result);
 		return result;
 	}
 
@@ -494,8 +497,8 @@ public class BDDState implements AbstractState {
 				for(int i = 0; i < e.getOperandCount(); i++) {
 					abstractOperands[i] = e.getOperands()[i].accept(this);
 					if(abstractOperands[i].getSet().isEmpty()) {
-					logger.error("found EMPTY Set for op #"+i+" in operation: "+e);
-				}
+						logger.error("found EMPTY Set for op #"+i+" in operation: "+e);
+					}
 				}
 
 				BDDSet op0;
@@ -504,6 +507,7 @@ public class BDDState implements AbstractState {
 				CheckResult check;
 				
 				try {
+					logger.debug("processing: " + e);
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -522,46 +526,56 @@ public class BDDState implements AbstractState {
 							&& op0.hasUniqueConcretization()
 							&& op0.getSet().contains(ExpressionFactory.createNumber(0, op0.getBitWidth())))
 						return BDDSet.FALSE;
-					if(!op0.isTop()
-							&& !op1.isTop()
-							&& op0.getRegion() == op1.getRegion()
-							&& op0.getBitWidth() == op1.getBitWidth()) {
-						BDDSet result = BDDSet.empty(1);
-						logger.debug("op0" + op0);
-						logger.debug("op1" + op1);
-						logger.debug(op0.getSet().intersect(op1.getSet()));
-						if(!op0.getSet().intersect(op1.getSet()).isEmpty())
-							result = result.join(BDDSet.TRUE);
-						if(!op0.getSet().invert().intersect(op1.getSet()).isEmpty())
-							result = result.join(BDDSet.FALSE);
-						assert !result.getSet().isEmpty() : "Equal"+e+" produced no result!?";
-						return result;
+					if(op0.isTop() || op1.isTop()) {
+						return BDDSet.topBW(e.getBitWidth());
+					} else {
+						if( op0.getBitWidth() == op1.getBitWidth()) {
+							if(op0.getRegion() == op1.getRegion()) {
+								BDDSet result = BDDSet.empty(1);
+								logger.debug("op0" + op0);
+								logger.debug("op1" + op1);
+								logger.debug(op0.getSet().intersect(op1.getSet()));
+								if(!op0.getSet().intersect(op1.getSet()).isEmpty())
+									result = result.join(BDDSet.TRUE);
+								if(!op0.getSet().invert().intersect(op1.getSet()).isEmpty())
+									result = result.join(BDDSet.FALSE);
+								assert !result.getSet().isEmpty() : "Equal"+e+" produced no result!?";
+								return result;
+							} else {
+								logger.debug("EQUAL with differing regions: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
+								return BDDSet.topBW(e.getBitWidth());
+							}
+						}
 					}
-					logger.debug("EQUAL: Returning TOP for: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
-					return BDDSet.topBW(e.getBitWidth());
-					/*assert false : "EQUAL called on something crazy!";
-					break;*/
+					assert false : "EQUAL called on something crazy: (" + op0 + " " + e.getOperator() + " " + op1 + ")";
+					break;
 				case UNSIGNED_LESS: // XXX [-SCM-] This SHOULD be a BUG . The order in UNSIGNED and signed operations are different!
 				case LESS:
 					assert e.getOperandCount() == 2 : "LESS or UNSIGNED_LESS called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
-					if(!op0.isTop()
-							&& !op1.isTop()
-							&& !op0.getSet().isEmpty()
+					if(op0.isTop() || op1.isTop()) {
+						// TODO: handle: non-TOP operand could be max element which would result in constant false
+						return BDDSet.topBW(e.getBitWidth());
+					} else {
+						if(!op0.getSet().isEmpty()
 							&& !op1.getSet().isEmpty()
-							&& op0.getRegion() == op1.getRegion()
 							&& op0.getBitWidth() == op1.getBitWidth()) {
-						BDDSet result = BDDSet.empty(1);
-						if(op0.getSet().min().longValue() < op1.getSet().max().longValue())
-							result = result.join(BDDSet.TRUE);
-						if(op0.getSet().max().longValue() >= op1.getSet().min().longValue())
-							result = result.join(BDDSet.FALSE);
-						return result;
+							if(op0.getRegion() == op1.getRegion()) {
+								BDDSet result = BDDSet.empty(1);
+								if(op0.getSet().min().longValue() < op1.getSet().max().longValue())
+									result = result.join(BDDSet.TRUE);
+								if(op0.getSet().max().longValue() >= op1.getSet().min().longValue())
+									result = result.join(BDDSet.FALSE);
+								return result;
+							} else {
+								logger.debug("LESS with differing regions: (" + op0 + " " + e.getOperator() + " " + op1 + ")");
+								return BDDSet.topBW(e.getBitWidth());
+							}
+						}
 					}
-					return BDDSet.topBW(e.getBitWidth());
-					/*assert false : "LESS called on something crazy!";
-					break;*/
+					assert false : "LESS called on something crazy: (" + op0 + " " + e.getOperator() + " " + op1 + ")";
+					break;
 				case UNSIGNED_LESS_OR_EQUAL: // XXX [-SCM-] This SHOULD be a BUG . The order in UNSIGNED and signed operations are different!
 				case LESS_OR_EQUAL:
 					assert e.getOperandCount() == 2 : "UNSIGNED_LESS_OR_EQUAL or LESS_OR_EQUAL called with " + e.getOperandCount() + " operands";
@@ -573,9 +587,11 @@ public class BDDState implements AbstractState {
 					return less.join(equal);
 				case NOT:
 					assert e.getOperandCount() == 1 : "NOT called with " + e.getOperandCount() + " operands";
+			//		logger.debug(abstractOperands[0]);
 					return new BDDSet(abstractOperands[0].getSet().bNot());
 				case NEG:
 					assert e.getOperandCount() == 1 : "NEG called with " + e.getOperandCount() + " operands";
+			//		logger.debug(abstractOperands[0]);
 					return new BDDSet(abstractOperands[0].getSet().negate());
 				case AND:
 					check = new CheckResult(e, abstractOperands);
@@ -723,6 +739,7 @@ public class BDDState implements AbstractState {
      			}
      
 				logger.warn("XXX operator "+ e.getOperator() + " not handled in " + e);
+				if(Options.debug.getValue()) assert false : "XXX operator "+ e.getOperator() + " not handled in " + e;
 				return BDDSet.topBW(e.getBitWidth());
 					/*
 				case ROL:
@@ -794,6 +811,7 @@ public class BDDState implements AbstractState {
 
 		BDDSet result = e.accept(visitor);
 
+		logger.debug("returned: " + result);
 
 		if(result.getSet().isEmpty()) {
 			logger.error("found EMPTY Set as result for operation: "+e);
@@ -807,7 +825,7 @@ public class BDDState implements AbstractState {
 
 
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
-		logger.debug("start processing abstractPost(" + statement + ")");
+		logger.debug("start processing abstractPost(" + statement + ") " + statement.getLabel());
 		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
 		Set<AbstractState> res = statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			private final Set<AbstractState> thisState() {
