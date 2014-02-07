@@ -106,7 +106,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 
 	@Override
 	public boolean isTop() {
-		return getRegion() == MemoryRegion.TOP && getSet().isFull();
+		return getRegion() == MemoryRegion.TOP; // && getSet().isFull();
 	}
 
 	@Override
