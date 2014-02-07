@@ -96,7 +96,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
 		BDDSet that = (BDDSet) l;
-		
+		if(isBot() || that.isTop()) return true;
+		if(isTop() && !that.isTop()) return false;
 		return (getRegion().lessOrEqual(that.getRegion()) || getRegion() == that.getRegion())
 				&& getBitWidth() == that.getBitWidth() 
 				&& getSet().subsetOf(that.getSet());
