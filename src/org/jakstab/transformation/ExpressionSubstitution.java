@@ -55,6 +55,7 @@ public class ExpressionSubstitution implements CFATransformation {
 	
 	public static RTLStatement substituteStatement(RTLStatement stmt, SubstitutionState s) {
 		Context substCtx = new Context();
+		//logger.debug("substituting in: " + stmt + " at " + stmt.getLabel());
 		for (RTLVariable v : stmt.getUsedVariables()) {
 			SubstitutionElement el = s.getValue(v);
 			if (!el.isTop()) {
