@@ -49,7 +49,7 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 	public Set<CFAEdge> resolveGoto(final AbstractState a, final RTLGoto stmt) {
 
 		assert stmt.getCondition() != null;
-		logger.debug("resolving goto" + stmt);
+		logger.debug("resolving goto: " + stmt);
 
 		Set<CFAEdge> results = new FastSet<CFAEdge>();
 
