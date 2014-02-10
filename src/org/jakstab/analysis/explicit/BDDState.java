@@ -539,6 +539,9 @@ public class BDDState implements AbstractState {
 									result = result.join(BDDSet.TRUE);
 								if(!op0.getSet().invert().intersect(op1.getSet()).isEmpty())
 									result = result.join(BDDSet.FALSE);
+								// XXX arne: i think this way round needs also be checked...
+								if(!op0.getSet().intersect(op1.getSet().invert()).isEmpty())
+									result = result.join(BDDSet.FALSE);
 								assert !result.getSet().isEmpty() : "Equal"+e+" produced no result!?";
 								return result;
 							} else {
