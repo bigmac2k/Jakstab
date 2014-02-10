@@ -29,6 +29,8 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		p.setExplicit(true);
 	}
 	
+	public static JOption<Integer> threshold = JOption.create("bdd-threshold", "k", 3, "Sets the threshold used in merge and prec.");
+
 	public BDDTracking() {}
 	
 	//public static JOption<Integer> varThreshold = JOption.create("explicit-threshold", "k", 5, "Set the maximum number separate states.");
@@ -55,7 +57,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		//states equal? s2 is old state (comes from reachedSet)
 		if(s2.lessOrEqual(s1)) return s1;
 		BDDPrecision prec = (BDDPrecision) precision;
-		if(prec.getCount() >= 3) {
+		if(prec.getCount() >= threshold.getValue()) {
 			//widen
 			logger.debug("Will widen now");
 			BDDState result = ((BDDState) s2).widen((BDDState) s1).join(s1).join(s2);
@@ -89,7 +91,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		}
 		if(!changed)
 			return Pair.create(s, (Precision) new BDDPrecision());
-		else if(prec.getCount() >= 3){
+		else if(prec.getCount() >= threshold.getValue()){
 			//XXX: Widen
 			/*
 			 * go thourgh varmap and memmap, widen every element that needs it...
