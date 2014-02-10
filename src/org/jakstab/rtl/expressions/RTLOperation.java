@@ -447,9 +447,14 @@ public class RTLOperation extends AbstractRTLExpression implements RTLExpression
 				case XOR:
 					result = op1 ^ op2;
 					break;
+				case ROL:
+					// XXX arne: is this ok?
+					result = (op1<<op2) | (op1 >> (this.getBitWidth() - op2));
+					logger.debug("Rotate left result: " + op1 + " ROL " + op2 + " = " + result);
+					break;
 				default:
 					logger.info("Missing operand handler for \"" + this.operator + 
-					"\"! Cannot determine numeric result in evaluation.");
+					"\"! Cannot determine numeric result in evaluation of: "+this);
 				return ExpressionFactory.createOperation(this.operator, evaledOperands);
 				}
 			}
