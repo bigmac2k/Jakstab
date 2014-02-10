@@ -232,6 +232,9 @@ public class CompositeProgramAnalysis implements ConfigurableProgramAnalysis {
 	@Override
 	public Pair<AbstractState, Precision> prec(AbstractState s, Precision precision, ReachedSet reached) {
 		CompositeState cs = (CompositeState)s;
+		assert s!=null;
+		assert precision !=null;
+		assert reached !=null;
 		AbstractState[] newComponents = new AbstractState[cpas.length];
 		Precision[] newPrecComponents = new Precision[cpas.length];
 		

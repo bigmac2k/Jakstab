@@ -596,6 +596,10 @@ public class BDDState implements AbstractState {
 				case AND:
 					check = new CheckResult(e, abstractOperands);
 					if(check.getTop()) {
+						if(e.getOperandCount()==2 && abstractOperands[0].isTop() && abstractOperands[1].hasUniqueConcretization()) {
+							IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet();
+							return new BDDSet(res.bAnd(abstractOperands[1].getSet()),MemoryRegion.GLOBAL);
+						}
 						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
@@ -680,7 +684,9 @@ public class BDDState implements AbstractState {
 					op0 = abstractOperands[0];
 					op1 = abstractOperands[1];
 					if(op1.hasUniqueConcretization())
-						return new BDDSet(op0.getSet().bShr(op1.randomElement().intValue()), op0.getRegion());
+						// if op0 is top, use global as target region
+						return new BDDSet(op0.getSet().bShr(op1.randomElement().intValue()),
+								op0.isTop()?MemoryRegion.GLOBAL:op0.getRegion()); 
 					assert false : "SHR called on something crazy";
 					break;
 				case SHL:
@@ -703,7 +709,7 @@ public class BDDState implements AbstractState {
 					check = new CheckResult(e, abstractOperands);
 					//TODO scm remove
 					final int prec = 5;
-					final int maxk = 10;
+					final int maxk = 15;
 					if(check.getTop()) {
 						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
