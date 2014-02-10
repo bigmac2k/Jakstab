@@ -131,8 +131,8 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			dataIsTop = true;
 
 		logger.verbose("Overapproximated all of " + region + " to TOP!");
-		if (Options.debug.getValue() && region == MemoryRegion.STACK)
-			throw new UnknownPointerAccessException("Set all of stack to TOP!");
+		if (Options.debug.getValue() && (region == MemoryRegion.STACK || region == MemoryRegion.GLOBAL))
+			throw new UnknownPointerAccessException("Set all of "+region+" to TOP!");
 	}
 	
 	private void setBytesTop(MemoryRegion region, long offset, int size) {
@@ -294,6 +294,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			// Check if the memory location references the program's data area or imports
 			AbsoluteAddress a = new AbsoluteAddress(offset);
 			ExecutableImage module = Program.getProgram().getModule(a);
+			logger.debug("getting memory for: " + a + " from: " + module + " dataIsTop: " + dataIsTop);
 			// only read memory from image if we havn't overapproximated yet or it's a read only section
 			if (module != null && (!dataIsTop || module.isReadOnly(a))) {
 				RTLNumber mValue;
