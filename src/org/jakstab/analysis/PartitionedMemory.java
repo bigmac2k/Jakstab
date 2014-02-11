@@ -194,7 +194,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			MemoryCell cell = new MemoryCell(offset, size, value);
 			for (int i=0; i<size; i++) {
 				store.put(region, offset + i, cell);
-				System.out.println("i : " + i + " put " + cell + " at region " + region + " and offset " + Long.toHexString(offset + i) + "; result: " + store.get(region, offset + i) + " smart result: " + get(region, offset + i, bitWidth));
+				logger.debug("i : " + i + " put " + cell + " at region " + region + " and offset " + Long.toHexString(offset + i) + "; result: " + store.get(region, offset + i) + " smart result: " + get(region, offset + i, bitWidth));
 			}
 		}
 	}
@@ -352,7 +352,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 	@SuppressWarnings("unchecked")
 	@Override
 	public PartitionedMemory<A> join(LatticeElement l) {
-		System.out.println("\n\n((((((((((Join\n");
+		logger.debug("\n\n((((((((((Join\n");
 		PartitionedMemory<A> other = (PartitionedMemory<A>)l;
 		PartitionedMemory<A> result = new PartitionedMemory<A>(valueFactory);
 		
@@ -371,7 +371,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 				A valueToSet = (A)value.join(other.get(MemoryRegion.GLOBAL, offset, bitWidth));
 				result.set(MemoryRegion.GLOBAL, offset, bitWidth, 
 						valueToSet);
-				System.out.println("join reversed: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
+				logger.debug("join reversed: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
 			}
 		}
 
@@ -385,47 +385,47 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			A valueToSet = (A)value.join(othergot);
 			result.set(region, offset, bitWidth, 
 					valueToSet);
-			System.out.println("join normal: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
+			logger.debug("join normal: set GLOBAL[" + Long.toHexString(offset) + "](" + bitWidth + ") = " + valueToSet + "; result: " + result.get(MemoryRegion.GLOBAL, offset, bitWidth));
 		}
 
-		System.out.println("op1: " + this + "\n\nop2: " + l + "\n\nres: " + result + "\n\nthis <= result: " + this.lessOrEqual(result) + "\nthat <= result: " + l.lessOrEqual(result));
+		logger.debug("op1: " + this + "\n\nop2: " + l + "\n\nres: " + result + "\n\nthis <= result: " + this.lessOrEqual(result) + "\nthat <= result: " + l.lessOrEqual(result));
 		
 		FastSet<Pair<MemoryRegion, Long>> keys = new FastSet<Pair<MemoryRegion, Long>>();
 		for(EntryIterator<MemoryRegion, Long, MemoryCell> entryIt = store.entryIterator(); entryIt.hasEntry(); entryIt.next()) {
 			long offset = entryIt.getRightKey();
-			System.out.println("offset: " + Long.toHexString(offset) + " cellOffset: " + Long.toHexString(entryIt.getValue().offset));
+			logger.debug("offset: " + Long.toHexString(offset) + " cellOffset: " + Long.toHexString(entryIt.getValue().offset));
 			if (offset != entryIt.getValue().offset) continue;
 			MemoryRegion region = entryIt.getLeftKey();
 			keys.add(new Pair<MemoryRegion, Long>(region, offset));
 		}
-		System.out.println("keys: " + keys);
+		logger.debug("keys: " + keys);
 		
 		if(!(this.lessOrEqual(result) && l.lessOrEqual(result))) {
 		for(Pair<MemoryRegion, Long> pair : keys) {
 			MemoryCell thisMemCell = store.get(pair.getLeft(), pair.getRight());
 			MemoryCell thatMemCell = other.store.get(pair.getLeft(), pair.getRight());
 			MemoryCell resuMemCell = result.store.get(pair.getLeft(), pair.getRight());
-			System.out.println();
+			logger.debug();
 			if(thisMemCell == null)
-				System.out.println(pair.getLeft() + " this: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + dataIsTop);
+				logger.debug(pair.getLeft() + " this: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + dataIsTop);
 			else
-				System.out.println(pair.getLeft() + " this: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thisMemCell.offset) + "[" + thisMemCell.size + "]  = " + thisMemCell.contents + " <= " + get(pair.getLeft(), pair.getRight(), thisMemCell.size * 8));
+				logger.debug(pair.getLeft() + " this: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thisMemCell.offset) + "[" + thisMemCell.size + "]  = " + thisMemCell.contents + " <= " + get(pair.getLeft(), pair.getRight(), thisMemCell.size * 8));
 			if(thatMemCell == null)
-				System.out.println(pair.getLeft() + " that: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + other.dataIsTop);
+				logger.debug(pair.getLeft() + " that: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + other.dataIsTop);
 			else
-				System.out.println(pair.getLeft() + " that: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thatMemCell.offset) + "[" + thatMemCell.size + "]  = " + thatMemCell.contents + " <= " + other.get(pair.getLeft(), pair.getRight(), thatMemCell.size * 8));
+				logger.debug(pair.getLeft() + " that: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(thatMemCell.offset) + "[" + thatMemCell.size + "]  = " + thatMemCell.contents + " <= " + other.get(pair.getLeft(), pair.getRight(), thatMemCell.size * 8));
 			if(resuMemCell == null)
-				System.out.println(pair.getLeft() + " resu: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + result.dataIsTop);
+				logger.debug(pair.getLeft() + " resu: " + Long.toHexString(pair.getRight()) + " = NULL, dataIsTop: " + result.dataIsTop);
 			else
-				System.out.println(pair.getLeft() + " resu: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(resuMemCell.offset) + "[" + resuMemCell.size + "]  = " + resuMemCell.contents + " <= " + result.get(pair.getLeft(), pair.getRight(), resuMemCell.size * 8));
+				logger.debug(pair.getLeft() + " resu: (" + Long.toHexString(pair.getRight()) + "=" + Long.toHexString(resuMemCell.offset) + "[" + resuMemCell.size + "]  = " + resuMemCell.contents + " <= " + result.get(pair.getLeft(), pair.getRight(), resuMemCell.size * 8));
 		}
-		System.out.println("((\nthis <= result");
+		logger.debug("((\nthis <= result");
 		this.lessOrEqual(result);
-		System.out.println("that <= result");
+		logger.debug("that <= result");
 		other.lessOrEqual(result);
-		System.out.println("))");
+		logger.debug("))");
 		}
-		System.out.println("))))))))))\n");
+		logger.debug("))))))))))\n");
 		assert(this.lessOrEqual(result) && l.lessOrEqual(result));
 		return result;
 	}
@@ -456,7 +456,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 			AbstractValue value = entryIt.getValue().contents;
 			AbstractValue otherValue = get(region, offset, bitWidth);
 			if (!otherValue.lessOrEqual(value))
-				System.out.println("normal direction fail: " + Long.toHexString(offset) + ": " + otherValue + " <= " + value + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
+				logger.debug("normal direction fail: " + Long.toHexString(offset) + ": " + otherValue + " <= " + value + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
 		}
 		
 		if (store.containsLeftKey(MemoryRegion.GLOBAL)) {
@@ -467,7 +467,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 				A value = entry.getValue().contents;
 				A otherValue = other.get(MemoryRegion.GLOBAL, offset, bitWidth);
 				if (!value.lessOrEqual(otherValue))
-					System.out.println("reversed direction fail: " + Long.toHexString(offset) + ": " + value + " <= " + otherValue + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
+					logger.debug("reversed direction fail: " + Long.toHexString(offset) + ": " + value + " <= " + otherValue + " otherValue is top? " + otherValue.isTop() + " value is Top? " + value.isTop());
 			}
 		}
 		for (EntryIterator<MemoryRegion, Long, MemoryCell> entryIt = other.store.entryIterator(); entryIt.hasEntry(); entryIt.next()) {

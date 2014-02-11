@@ -58,6 +58,7 @@ public class ExpressionSubstitution implements CFATransformation {
 		//logger.debug("substituting in: " + stmt + " at " + stmt.getLabel());
 		for (RTLVariable v : stmt.getUsedVariables()) {
 			SubstitutionElement el = s.getValue(v);
+			//logger.debug("substitution value: " + v + " isTop? " + el.isTop());
 			if (!el.isTop()) {
 				substCtx.addAssignment(v, el.getExpression());
 			}

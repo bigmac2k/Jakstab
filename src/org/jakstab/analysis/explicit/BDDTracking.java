@@ -80,8 +80,8 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	public Pair<AbstractState, Precision> prec(AbstractState s,
 			Precision precision, ReachedSet reached) {
 		logger.debug("prec called on state " + s.getIdentifier());
-		//System.out.println("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
-		//System.out.println("PREC reached size: " + reached.size());
+		logger.debug("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
+		//logger.debug("PREC reached size: " + reached.size());
 		BDDPrecision prec = (BDDPrecision) precision;
 		BDDState newState = (BDDState) s;
 		boolean changed = false;
@@ -101,7 +101,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 			for(AbstractState state : reached) {
 				out.widen((BDDState) state);
 			}
-			System.out.println("Widen result: " + out);
+			logger.debug("Widen result: " + out);
 			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
 		} else
 			return Pair.create(s, (Precision) prec.inc());
