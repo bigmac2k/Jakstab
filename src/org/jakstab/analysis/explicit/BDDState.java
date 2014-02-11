@@ -65,23 +65,23 @@ import cc.sven.tlike.*;
 
 public class BDDState implements AbstractState {
 
-	private BDDState(VariableValuation<BDDSet> vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
+	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
 		this.abstractVarTable = vartable;
 		this.abstractMemoryTable = memtable;
 		this.allocationCounter = counter;
 	}
 
 	protected BDDState(BDDState proto) {
-		this(new VariableValuation<BDDSet>(proto.abstractVarTable),
+		this(new BDDVariableValuation(proto.abstractVarTable),
 				new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
 				AllocationCounter.create());
 	}
 
 	public BDDState() {
-		this(new VariableValuation<BDDSet>(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
+		this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
 	}
 
-	private final VariableValuation<BDDSet> abstractVarTable;
+	private final BDDVariableValuation abstractVarTable;
 	private final PartitionedMemory<BDDSet> abstractMemoryTable;
 	private final AllocationCounter allocationCounter;
 
@@ -198,7 +198,7 @@ public class BDDState implements AbstractState {
 		if (isTop() || that.isBot()) return this;
 		if (isBot() || that.isTop()) return that;
 
-		VariableValuation<BDDSet> newVarVal = 
+		BDDVariableValuation newVarVal = 
 				abstractVarTable.join(that.abstractVarTable); 
 		PartitionedMemory<BDDSet> newStore = 
 				abstractMemoryTable.join(that.abstractMemoryTable);
@@ -553,6 +553,7 @@ public class BDDState implements AbstractState {
 					assert false : "EQUAL called on something crazy: (" + op0 + " " + e.getOperator() + " " + op1 + ")";
 					break;
 				case UNSIGNED_LESS: // XXX [-SCM-] This SHOULD be a BUG . The order in UNSIGNED and signed operations are different!
+					
 				case LESS:
 					assert e.getOperandCount() == 2 : "LESS or UNSIGNED_LESS called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
@@ -1209,9 +1210,10 @@ public class BDDState implements AbstractState {
 							if(Options.failFast.getValue() && Options.debug.getValue()) throw e;
 							return thisState();
 						}
-						
 						TranslationState tState = converted.getLeft();
+
 						for(Map.Entry<Integer, RTLExpression> entry : tState.getBackMap().entrySet()) {
+							logger.debug("processing entry: " + entry);
 							int id = entry.getKey();
 							IntLikeSet<Long, RTLNumber> intlikeset = valid.get(id);
 							MemoryRegion region = tState.getRegionMap().get(id);
