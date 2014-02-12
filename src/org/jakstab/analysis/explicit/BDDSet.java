@@ -53,12 +53,8 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	
 	@Override
 	public String toString() {
-		//Hardcodednumbers!!!!
-		final int limit = 50;
 		if(getSet().isFull())
 			return "(" + region + " | " + getBitWidth() + " | ANYNUM)";
-		/*if(getSet().sizeGreaterThan(limit))
-			return "(" + region + " | " + getBitWidth() +  " | ...)";*/
 		return "(" + region + " | " + getBitWidth() + " | " + getSet() + ")";
 	}
 	
@@ -75,11 +71,10 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		//TODO SCM : fix - what if set is full for e.g. boolean?
 		if(getSet().isFull())
 			return RTLNumber.ALL_NUMBERS;
-		Set<RTLNumber> outset = new FastSet<RTLNumber>();
-		for(RTLNumber i : getSet().java()) {
-			outset.add(i);
+		if(getSet().sizeGreaterThan(10*BDDTracking.threshold.getValue())) {
+			logger.info("concretizing possibly large set: " + this);
 		}
-		return outset;
+		return getSet().java();
 	}
 	
 	public boolean isSingleton() {
@@ -122,7 +117,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		Set<BDDSet> result = new FastSet<BDDSet>();
 		//XXX limit to only n elements
 		logger.debug("limit needed for: " + getSet() + " with " + getSet().size() + " elements");
-		for(RTLNumber rtlnum : getSet().java()) {
+		for(RTLNumber rtlnum : concretize()) {
 			BDDSet res = (BDDSet) store.get(getRegion(),rtlnum.longValue(), getSet().bits());
 			result.add(res);
 		}
@@ -136,7 +131,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		//XXX limit to only n elements
 		logger.debug("limit needed for: " + getSet() + " with " + getSet().size() + " elements");
 		//XXX what if getSet() is empty -> result will be null
-		for (RTLNumber rtlnum : getSet().java()) {
+		for (RTLNumber rtlnum : concretize()) {
 			BDDSet res = (BDDSet) store.get(getRegion(), rtlnum.longValue(), getSet().bits());
 			if(result == null) {
 				//First iteration - start of reduce (fold1)
@@ -167,7 +162,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 				rtlnum.writeStore(getSet().bits(), store, value);
 			} else {
 				//Weak update
-				for(RTLNumber rtlnums : getSet().java()) {
+				for(RTLNumber rtlnums : concretize()) {
 						store.weakUpdate(getRegion(), rtlnums.longValue(), getBitWidth(), value);
 				}
 			}

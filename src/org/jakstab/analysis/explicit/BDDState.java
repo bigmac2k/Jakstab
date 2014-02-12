@@ -331,7 +331,12 @@ public class BDDState implements AbstractState {
 			return false;
 		} else {
 			MemoryRegion region = pointer.getRegion();
-			for(RTLNumber rtlnum : pointer.getSet().java()) {
+			if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
+				logger.info("Overapproximating large setMemory access: " + pointer + " value: "+ value + " size: " + pointer.getSet().size() );
+				abstractMemoryTable.setTop(pointer.getRegion());
+				return false;
+			}
+			for(RTLNumber rtlnum : pointer.concretize()) {
 				// XXX SCM why the bitWidth - is contained in rtlnum and in BDDSet.singleton... - CHECK!
 				abstractMemoryTable.set(region, rtlnum.longValue(), bitWidth, value);
 			}
@@ -349,9 +354,13 @@ public class BDDState implements AbstractState {
 			logger.error("Pointer deref with TOP region (pointer: " + pointer +")");
 			return BDDSet.topBW(bitWidth);
 		}
+		if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
+			logger.info("Overapproximating large getMemory access: " + pointer + " size: " + pointer.getSet().size() );
+			return BDDSet.topBW(bitWidth);
+		}
 		//the following is again essentially a fold1...
 		BDDSet result = null;
-		for(RTLNumber rtlnum : pointer.getSet().java()) {
+		for(RTLNumber rtlnum : pointer.concretize()) {
 			//logger.debug("accessing at: " + pointer.getRegion() + ", " + rtlnum.intValue());
 			BDDSet values = abstractMemoryTable.get(pointer.getRegion(), rtlnum.intValue(), bitWidth);
 			if(result == null)
@@ -1515,7 +1524,7 @@ public class BDDState implements AbstractState {
 						logger.debug(stmt.getLabel() + ": More than one destination memset(" + abstractDestination + ", " + abstractValue + ", " + abstractCount + ")");
 					int step = abstractValue.getBitWidth() / 8;
 					long count = abstractCount.getSet().randomElement().longValue();
-					for(RTLNumber rtlnum : abstractDestination.getSet().java()) {
+					for(RTLNumber rtlnum : abstractDestination.concretize()) {
 						long base = rtlnum.longValue();
 						for(long i = base; i < base + (count * step); i += step) {
 							BDDSet pointer = BDDSet.singleton(abstractDestination.getRegion(), ExpressionFactory.createNumber(i, abstractDestination.getBitWidth()));
