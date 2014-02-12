@@ -88,14 +88,14 @@ public class VariableValuation<A extends AbstractValue> implements LatticeElemen
 		}
 	}
 	
-	private void clearCovering(RTLVariable var) {
+	protected void clearCovering(RTLVariable var) {
 		for (RTLVariable covering : ExpressionFactory.coveringRegisters(var)) {
 			aVarVal.remove(covering);
 			//clearCovering(covering);
 		}
 	}
 	
-	private void clearCovered(RTLVariable var) {
+	protected void clearCovered(RTLVariable var) {
 		for (RTLVariable covered : ExpressionFactory.coveredRegisters(var)) {
 			aVarVal.remove(covered);
 			//clearCovered(covered);
@@ -104,7 +104,7 @@ public class VariableValuation<A extends AbstractValue> implements LatticeElemen
 	
 	@SuppressWarnings("unchecked")
 	public void set(RTLVariable var, A value) {
-		
+		logger.debug("setting var: " + var + " to value: " + value);
 		RTLBitRange asParent = ExpressionFactory.getRegisterAsParent(var);
 
 		// Set parent register - we only do this if the value to set represents 
@@ -141,6 +141,7 @@ public class VariableValuation<A extends AbstractValue> implements LatticeElemen
 		if (value.isTop()) {
 			aVarVal.remove(var);
 		} else {
+			logger.debug("putting var: " + var + " to value: " + value);
 			aVarVal.put(var, value);
 		}
 	}

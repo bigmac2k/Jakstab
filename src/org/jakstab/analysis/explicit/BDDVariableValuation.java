@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.jakstab.analysis.AbstractValueFactory;
 import org.jakstab.analysis.LatticeElement;
+import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.VariableValuation;
 import org.jakstab.rtl.Context;
 import org.jakstab.rtl.expressions.ExpressionFactory;
@@ -14,6 +15,8 @@ import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLNumber;
 import org.jakstab.rtl.expressions.RTLVariable;
 import org.jakstab.util.Logger;
+
+import cc.sven.tlike.IntLikeSet;
 
 public class BDDVariableValuation extends VariableValuation<BDDSet> {
 
@@ -80,6 +83,49 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 			}
 
 			return valueFactory.createTop(var.getBitWidth());
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public void set(RTLVariable var, BDDSet value) {
+		logger.debug("setting var: " + var + " to value: " + value);
+		RTLBitRange asParent = ExpressionFactory.getRegisterAsParent(var);
+
+		// Set parent register - we only do this if the value to set represents 
+		// a single concrete value. If we want to generalize this, we have to
+		// build the cartesian product of concretizations
+		if (asParent != null && asParent.getOperand() instanceof RTLVariable) {
+			
+			RTLVariable parent = (RTLVariable)asParent.getOperand();
+			BDDSet parentVal = get(parent);
+			
+			logger.debug("asParent: " + asParent + " parent: " + parent + " parentVal: " + parentVal);
+			
+			int firstBit = ((RTLNumber)asParent.getFirstBitIndex()).intValue();
+			int lastBit = ((RTLNumber)asParent.getLastBitIndex()).intValue();
+			long bitMask = RTLBitRange.bitMask(0, firstBit - 1) | 
+					RTLBitRange.bitMask(lastBit + 1, asParent.getOperand().getBitWidth());
+
+			IntLikeSet<Long, RTLNumber> maskedParent = parentVal.getSet().bAnd(valueFactory.createAbstractValue(ExpressionFactory.createNumber(bitMask,parentVal.getBitWidth())).getSet());
+			IntLikeSet<Long, RTLNumber> shiftedValue = value.getSet().zeroFill(parentVal.getBitWidth()-1, value.getBitWidth()-1).bShl(firstBit);
+
+			MemoryRegion region = value.getRegion().join(parentVal.getRegion());
+			if(region.isTop()) {
+				set(parent, new BDDSet(maskedParent.bOr(shiftedValue),value.getRegion()));
+			} else {
+				set(parent, new BDDSet(maskedParent.bOr(shiftedValue),region));
+			}
+		}
+
+		clearCovering(var);
+		clearCovered(var);
+		
+		if (value.isTop()) {
+			aVarVal.remove(var);
+		} else {
+			logger.debug("putting var: " + var + " to value: " + value);
+			aVarVal.put(var, value);
 		}
 	}
 }

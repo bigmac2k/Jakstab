@@ -332,7 +332,7 @@ public class BDDState implements AbstractState {
 		} else {
 			MemoryRegion region = pointer.getRegion();
 			if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
-				logger.info("Overapproximating large setMemory access: " + pointer + " value: "+ value + " size: " + pointer.getSet().size() );
+				logger.info("Overapproximating large setMemory access: " + pointer + " value: "+ value + " size: " + pointer.getSet().sizeBigInt() );
 				abstractMemoryTable.setTop(pointer.getRegion());
 				return false;
 			}
@@ -355,7 +355,7 @@ public class BDDState implements AbstractState {
 			return BDDSet.topBW(bitWidth);
 		}
 		if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
-			logger.info("Overapproximating large getMemory access: " + pointer + " size: " + pointer.getSet().size() );
+			logger.info("Overapproximating large getMemory access: " + pointer + " size: " + pointer.getSet().sizeBigInt() );
 			return BDDSet.topBW(bitWidth);
 		}
 		//the following is again essentially a fold1...
@@ -1252,7 +1252,8 @@ public class BDDState implements AbstractState {
 								RTLOperation op = (RTLOperation) exp;
 								if(specialCaseBAndSingleton(op)) {
 									//XXX may be possible to lift this restriction
-									if(value.isSingleton() || (new BDDSet(value.getSet().invert(), value.getRegion())).isSingleton()) {
+									if(value.isSingleton() 
+											|| (new BDDSet(value.getSet().invert(), value.getRegion())).isSingleton()) {
 										RTLNumber n = null;
 										RTLVariable v = null;
 										RTLExpression[] exps = op.getOperands();
@@ -1263,6 +1264,7 @@ public class BDDState implements AbstractState {
 											n = (RTLNumber) exps[1];
 											v = (RTLVariable) exps[0];
 										}
+										logger.debug("n: "+n+" v: "+v);
 										assert n != null && v != null : "Special case restriction failure";
 										BDDSet oldValue = getValue(v);
 										BDDSet nSingleton = BDDSet.singleton(n);
@@ -1270,17 +1272,17 @@ public class BDDState implements AbstractState {
 										//assert nSingleton.getRegion() == value.getRegion() : "Constraint System: FAIL - regions (" + nSingleton.getRegion() + ", " + value.getRegion() + ")";
 										if(value.isSingleton()) {
 											if(nSingleton.getSet().bNot().bAnd(value.getSet()).randomElement().longValue() == 0L) {
-												//logger.debug("Value: " + value + ", nSingleton: " + nSingleton);
-												BDDSet newValue = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet()), oldValue.getRegion());
-												//logger.debug("oldValue: " + oldValue + ", newValue: " + newValue);
+												logger.debug("Value: " + value + ", nSingleton: " + nSingleton);
+												BDDSet newValue = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet()), region);
+												logger.debug("1: oldValue: " + oldValue + ", newValue: " + newValue);
 												post.setValue(v, newValue);
 											} else return Collections.emptySet();
 										} else {
 											if(nSingleton.getSet().bNot().bAnd(value.getSet().invert()).randomElement().longValue() == 0L) {
 												BDDSet notAllowed = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet().invert()), oldValue.getRegion());
-												//logger.info("notAllowed: " + notAllowed);
-												BDDSet newValue = new BDDSet(oldValue.getSet().intersect(notAllowed.getSet().invert()), oldValue.getRegion());
-												//logger.debug("oldValue: " + oldValue + ", newValue: " + newValue);
+												logger.info("notAllowed: " + notAllowed);
+												BDDSet newValue = new BDDSet(oldValue.getSet().intersect(notAllowed.getSet().invert()), region);
+												logger.debug("2: oldValue: " + oldValue + ", newValue: " + newValue);
 												post.setValue(v, newValue);
 											} else return Collections.emptySet();
 										}
