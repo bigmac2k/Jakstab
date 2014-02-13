@@ -332,7 +332,7 @@ public class BDDState implements AbstractState {
 		} else {
 			MemoryRegion region = pointer.getRegion();
 			if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
-				logger.info("Overapproximating large setMemory access: " + pointer + " value: "+ value + " size: " + pointer.getSet().sizeBigInt() );
+				logger.info("Overapproximating large setMemory access: " + pointer + " value: "+ value  );
 				abstractMemoryTable.setTop(pointer.getRegion());
 				return false;
 			}
@@ -355,7 +355,7 @@ public class BDDState implements AbstractState {
 			return BDDSet.topBW(bitWidth);
 		}
 		if(pointer.getSet().sizeGreaterThan(100*BDDTracking.threshold.getValue())) {
-			logger.info("Overapproximating large getMemory access: " + pointer + " size: " + pointer.getSet().sizeBigInt() );
+			logger.info("Overapproximating large getMemory access: " + pointer );
 			return BDDSet.topBW(bitWidth);
 		}
 		//the following is again essentially a fold1...
@@ -399,6 +399,7 @@ public class BDDState implements AbstractState {
 
 			@Override
 			public BDDSet visit(RTLBitRange e) {
+				logger.debug("extracting bitrange: " + e);
 				BDDSet abstractFirst = e.getFirstBitIndex().accept(this);
 				BDDSet abstractLast = e.getLastBitIndex().accept(this);
 				BDDSet abstractOperand = e.getOperand().accept(this);
@@ -416,7 +417,9 @@ public class BDDState implements AbstractState {
 				|| !(lo >= 0)
 				|| !(hi >= 0))
 					return BDDSet.topBW(e.getBitWidth());
-				return abstractOperand.bitExtract(lo, hi);
+				BDDSet ret = abstractOperand.bitExtract(lo, hi);
+				logger.debug("extracted: " + ret);
+				return ret;
 			}
 
 			@Override
@@ -516,7 +519,7 @@ public class BDDState implements AbstractState {
 				CheckResult check;
 				
 				try {
-					logger.debug("processing: " + e);
+					logger.debug("processing: " + e + " operator: " + e.getOperator());
 				switch(e.getOperator()) {
 				/* decided to go for code duplication for readability (more separate cases).
 				 * also, clone researchers need something meaningful to analyze...
@@ -722,7 +725,7 @@ public class BDDState implements AbstractState {
 					check = new CheckResult(e, abstractOperands);
 					//TODO scm remove
 					final int prec = 5;
-					final int maxk = 15;
+					final int maxk = 2*prec*BDDTracking.threshold.getValue();
 					if(check.getTop()) {
 						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
@@ -746,6 +749,7 @@ public class BDDState implements AbstractState {
 								res = res.mul(maxk, prec, op);
 							//}
 						}
+						logger.debug("MUL: " + res);
 						return new BDDSet(res, check.getRegion());
 					}
 					assert false : "MUL called on something crazy";
@@ -830,7 +834,7 @@ public class BDDState implements AbstractState {
 
 		BDDSet result = e.accept(visitor);
 
-		logger.debug("returned: " + result);
+		logger.debug("abstractEval returned: " + result + " for: " + e);
 
 		if(result.getSet().isEmpty()) {
 			logger.error("found EMPTY Set as result for operation: "+e);

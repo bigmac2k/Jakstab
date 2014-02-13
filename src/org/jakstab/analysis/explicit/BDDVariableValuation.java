@@ -56,6 +56,7 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 
 	@Override
 	public BDDSet get(RTLVariable var) {
+		logger.debug("getting var: " + var );
 		BDDSet e = aVarVal.get(var);
 		if (e != null) {
 			return e;
@@ -73,13 +74,14 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 					return valueFactory.createTop(var.getBitWidth());
 				
 
-				logger.debug(parent);
-				logger.debug(asParent);
-				logger.debug(parentVal);
+				logger.debug("asParent: " + asParent + " parent: " + parent + " parentVal: " + parentVal);
+
 				
 				int first = ((RTLNumber)asParent.getFirstBitIndex()).intValue();
 				int last = ((RTLNumber)asParent.getLastBitIndex()).intValue();
-				return new BDDSet(parentVal.getSet().bitExtract(last,first),parentVal.getRegion());
+				IntLikeSet<Long, RTLNumber> ret = parentVal.getSet().bitExtract(last,first);
+				logger.debug("first: "+first +" last: "+last+" extractedValue: " + ret);
+				return new BDDSet(ret,parentVal.getRegion());
 			}
 
 			return valueFactory.createTop(var.getBitWidth());
@@ -116,6 +118,7 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 			} else {
 				set(parent, new BDDSet(maskedParent.bOr(shiftedValue),region));
 			}
+			return;
 		}
 
 		clearCovering(var);
