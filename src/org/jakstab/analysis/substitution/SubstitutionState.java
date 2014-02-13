@@ -202,15 +202,17 @@ public final class SubstitutionState implements AbstractState {
 				SubstitutionState post = new SubstitutionState(SubstitutionState.this);
 				Writable lhs = stmt.getLeftHandSide();
 				RTLExpression rhs = stmt.getRightHandSide();
-				
+
+				logger.debug("subst: " + stmt + " rhs: " + rhs + " state: " + this.toString());
 				// Evaluate righthandside
 				rhs = abstractEval(rhs).getExpression();
-				
+				logger.debug("evaled rhs: " + rhs);
 				// Remove existing substitution for the LHS
 				post.aVarVal.remove(lhs);
 				// If RHS is a pure variable, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
-					post.setValue(lhs, new SubstitutionElement(rhs));
+					//post.setValue(lhs, new SubstitutionElement(rhs));
+					post.setValue(lhs, new SubstitutionElement(stmt.getRightHandSide()));
 				}
 
 				// If any expression in the map uses the LHS variable, it is now invalid, so remove it
@@ -234,7 +236,7 @@ public final class SubstitutionState implements AbstractState {
 
 				if (post.aVarVal.isEmpty()) return TOP;
 				if (post.equals(SubstitutionState.this)) return SubstitutionState.this;
-				//logger.info("Post: " + post);
+				logger.debug("Post: " + post);
 				return post;
 			}
 			
@@ -434,7 +436,7 @@ public final class SubstitutionState implements AbstractState {
 	public String toString() {
 		if (isTop()) return Characters.TOP;
 		else if (isBot()) return Characters.BOT;
-		else return stateId + ": " + aVarVal.toString();
+		else return "Subst: " + stateId + ": " + aVarVal.toString();
 	}
 
 	@Override
