@@ -776,7 +776,7 @@ public final class BasedNumberValuation implements AbstractState {
 					}
 					
 				} else {
-					logger.debug(stmt.getLabel() + ": Overapproximating memset( " + aDest + ", " + aVal + ", " + aCount + ")");
+					logger.info(stmt.getLabel() + ": Overapproximating memset( " + aDest + ", " + aVal + ", " + aCount + ")");
 					post.aStore.setTop(aDest.getRegion());
 				}
 				
@@ -818,7 +818,7 @@ public final class BasedNumberValuation implements AbstractState {
 								size);
 					}
 				} else {
-					logger.debug(stmt.getLabel() + ": Overapproximating memcpy( " + aSrc + ", " + aDest + ", " + aSize + ")");
+					logger.info(stmt.getLabel() + ": Overapproximating memcpy( " + aSrc + ", " + aDest + ", " + aSize + ")");
 					post.aStore.setTop(aDest.getRegion());
 				}
 				

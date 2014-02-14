@@ -300,7 +300,7 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractVarTable.get(key);
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
-				logger.debug("widening variable " + key + " that had value " + value + " because of " + otherValue);
+				logger.info("widening variable " + key + " that had value " + value + " because of " + otherValue);
 				result.abstractVarTable.setTop(key);
 			}
 		}
@@ -313,7 +313,7 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
-				logger.debug("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
+				logger.info("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
 				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
@@ -346,7 +346,7 @@ public class BDDState implements AbstractState {
 
 	private BDDSet getMemoryValue(BDDSet pointer, int bitWidth) {
 		//XXX like in the original - if pointer.getRegion() == MemoryRegion.TOP -> assert false...
-		logger.debug("memory access for: " + pointer + " bw: " + bitWidth);
+		logger.verbose("memory access for: " + pointer + " bw: " + bitWidth);
 		if(pointer.isTop() || pointer.getSet().isFull())
 			return BDDSet.topBW(bitWidth);
 		if(pointer.getRegion() == MemoryRegion.TOP)
@@ -370,7 +370,7 @@ public class BDDState implements AbstractState {
 				return BDDSet.topBW(result.getBitWidth());
 			result = new BDDSet(result.getSet().union(values.getSet()), result.getRegion());
 		}
-		logger.debug("memory access result: " + result);
+		logger.verbose("memory access result: " + result);
 		return result;
 	}
 
@@ -837,9 +837,7 @@ public class BDDState implements AbstractState {
 		logger.debug("abstractEval returned: " + result + " for: " + e);
 
 		if(result.getSet().isEmpty()) {
-			logger.error("found EMPTY Set as result for operation: "+e);
-			logger.error(e.getClass());
-			logger.error("state: "+ BDDState.this);
+			logger.error("found EMPTY Set as result for operation: "+e + " in state: "+ BDDState.this);
 		}
 		
 		assert result.getBitWidth() == e.getBitWidth() : "Bitwidth changed from "+e.getBitWidth()+" to "+result.getBitWidth()+" during evaluation of " + e + " to " + result;
@@ -848,7 +846,7 @@ public class BDDState implements AbstractState {
 
 
 	public Set<AbstractState> abstractPost(final RTLStatement statement, final Precision precision) {
-		logger.debug("start processing abstractPost(" + statement + ") " + statement.getLabel());
+		logger.verbose("start processing abstractPost(" + statement + ") " + statement.getLabel());
 		//final ExplicitPrecision eprec = (ExplicitPrecision)precision;
 		Set<AbstractState> res = statement.accept(new DefaultStatementVisitor<Set<AbstractState>>() {
 			private final Set<AbstractState> thisState() {
@@ -1185,7 +1183,7 @@ public class BDDState implements AbstractState {
 
 			@Override
 			public Set<AbstractState> visit(RTLAssume stmt) {
-				logger.debug("Found RTLAssume: " + stmt);
+				logger.verbose("Found RTLAssume: " + stmt);
 				BDDSet truthValue = abstractEval(stmt.getAssumption());
 
 				//if truthValue = False -> infeasible
@@ -1290,7 +1288,7 @@ public class BDDState implements AbstractState {
 												post.setValue(v, newValue);
 											} else return Collections.emptySet();
 										}
-									} else logger.debug("Constraint System: Skipping restriction for specialCaseBAndSingleton (" + exp + ")");
+									} else logger.error("Constraint System: Skipping restriction for specialCaseBAndSingleton (" + exp + ")");
 								} else if(specialCaseAddSingleton(op)) {
 									RTLNumber constant;
 									RTLVariable var;
@@ -1304,10 +1302,10 @@ public class BDDState implements AbstractState {
 									BDDSet newValue = value.plus(BDDSet.singleton(constant).negate());
 									if(newValue.getSet().isEmpty()) return Collections.emptySet();
 									post.setValue(var, newValue);
-								}else logger.debug("Constraint System: Unhandled special case (" + exp + ") during restriction");
-							} else logger.debug("Constraint System: Unhandled type (" + exp.getClass() + ") during restriction");
+								}else logger.error("Constraint System: Unhandled special case (" + exp + ") during restriction");
+							} else logger.error("Constraint System: Unhandled type (" + exp.getClass() + ") during restriction");
 						}
-						logger.debug("new state from Constraint System:" + post);
+						logger.verbose("new state from Constraint System:" + post);
 						return Collections.singleton((AbstractState) post);
 						
 //						//XXX
@@ -1424,7 +1422,7 @@ public class BDDState implements AbstractState {
 //						}
 					}
 				}
-				logger.debug("Ignoring RTLAssume: " + stmt);
+				logger.warn("Ignoring RTLAssume: " + stmt);
 				return Collections.singleton((AbstractState) copyThisState());
 			}
 
@@ -1538,7 +1536,7 @@ public class BDDState implements AbstractState {
 						}
 					}
 				} else {
-					logger.debug(stmt.getLabel() + ": Overapproximating memset(" + abstractDestination + ", " + abstractValue + ", " + abstractCount + ")");
+					logger.info(stmt.getLabel() + ": Overapproximating memset(" + abstractDestination + ", " + abstractValue + ", " + abstractCount + ")");
 					post.abstractMemoryTable.setTop(abstractDestination.getRegion());
 				}
 				return Collections.singleton((AbstractState) post);
@@ -1569,7 +1567,7 @@ public class BDDState implements AbstractState {
 							,abstractDestination.getSet().randomElement().longValue()
 							,abstractSize.getSet().randomElement().longValue());
 				} else {
-					logger.debug(stmt.getLabel() + ": Overapproximating memcpy(" + abstractDestination + ", " + abstractDestination + ", " + abstractSize + ")");
+					logger.info(stmt.getLabel() + ": Overapproximating memcpy(" + abstractDestination + ", " + abstractDestination + ", " + abstractSize + ")");
 					post.abstractMemoryTable.setTop(abstractDestination.getRegion());
 				}
 				return Collections.singleton((AbstractState) post);

@@ -109,7 +109,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		}
 		store.clear();
 		dataIsTop = true;
-		logger.verbose("Overapproximated all memory regions to TOP!");
+		logger.info("Overapproximated all memory regions to TOP!");
 		if (Options.debug.getValue())
 			throw new UnknownPointerAccessException("Set all memory regions to TOP!");
 	}
@@ -130,7 +130,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		if (region == MemoryRegion.GLOBAL)
 			dataIsTop = true;
 
-		logger.verbose("Overapproximated all of " + region + " to TOP!");
+		logger.info("Overapproximated all of " + region + " to TOP!");
 		if (Options.debug.getValue() && (region == MemoryRegion.STACK || region == MemoryRegion.GLOBAL))
 			throw new UnknownPointerAccessException("Set all of "+region+" to TOP!");
 	}
@@ -283,7 +283,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 				}
 					
 					
-				logger.verbose("Mismatching get with bitwidth " + bitWidth + " on cell at " + region + " + " + offset + " with bitwidth " + cell.size * 8);
+				logger.debug("Mismatching get with bitwidth " + bitWidth + " on cell at " + region + " + " + offset + " with bitwidth " + cell.size * 8);
 				
 				return valueFactory.createTop(bitWidth);
 			}
@@ -426,7 +426,7 @@ public final class PartitionedMemory<A extends AbstractValue> implements Lattice
 		logger.debug("))");
 		}
 		logger.debug("))))))))))\n");
-		assert(this.lessOrEqual(result) && l.lessOrEqual(result));
+		//assert(this.lessOrEqual(result) && l.lessOrEqual(result));
 		return result;
 	}
 	
