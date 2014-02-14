@@ -156,7 +156,7 @@ public class Architecture {
 		return temporaryVariables;
 	}
 
-	public SetOfVariables getStatusFlags() {
+	public static SetOfVariables getStatusFlags() {
 		return statusFlags;
 	}
 	
