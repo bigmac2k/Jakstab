@@ -152,6 +152,8 @@ public class AlternatingStateTransformerFactory extends ResolvingTransformerFact
 					// Target address sanity check
 					if (nextLabel.getAddress().getValue() < 10L) {
 						logger.warn("Control flow from " + stmt.getLabel() + " reaches address " + nextLabel.getAddress() + "!");
+						if (Options.debug.getValue())
+							throw new ControlFlowException(a, "Unresolvable control flow from " + stmt.getLabel());
 					}
 
 					results.add(new CFAEdge(assume.getLabel(), assume.getNextLabel(), assume, Kind.MAY));

@@ -152,7 +152,7 @@ public class Architecture {
 		return stringTarget;
 	}
 
-	public SetOfVariables getTemporaryVariables() {
+	public static SetOfVariables getTemporaryVariables() {
 		return temporaryVariables;
 	}
 

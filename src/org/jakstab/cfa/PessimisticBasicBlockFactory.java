@@ -131,6 +131,8 @@ public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory im
 			// Target address sanity check
 			if (nextLabel.getAddress().getValue() < 10L) {
 				logger.warn("Control flow from " + a.getLocation() + " reaches address " + nextLabel.getAddress() + "!");
+				if (Options.debug.getValue())
+					throw new ControlFlowException(a, "Unresolvable control flow from " + stmt.getLabel());
 			}
 
 			results.add(assume);
