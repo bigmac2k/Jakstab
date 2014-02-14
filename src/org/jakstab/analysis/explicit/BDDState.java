@@ -664,7 +664,26 @@ public class BDDState implements AbstractState {
 					break;
 				case PLUS:
 					check = new CheckResult(e, abstractOperands);
-					if(check.getTop()) {
+					boolean allSame = true;
+					for(int i = 1; i < e.getOperandCount() && allSame; i++)
+						if(e.getOperands()[i] != e.getOperands()[0])
+							allSame = false;
+					if(allSame && (check.getTop() || check.getOk())
+					&& (e.getOperandCount() & (e.getOperandCount() - 1)) == 0) { //check power of two operand count - can be lifted as soon as mulSingleton is there - then use mulSingleton instead of shift
+						logger.debug("Special case for plus on same arguments, e.g. add %eax %eax.");
+						//special case, e.g. add %eax %eax == 2 * %eax
+						int toShift = 0;
+						for(int ops = e.getOperandCount(); (ops & 1) == 0; ops >>= 1)
+							toShift++;
+						IntLikeSet<Long, RTLNumber> res = abstractOperands[0].getSet().bShl(toShift);
+						if(check.getOk())
+							return new BDDSet(res, check.getRegion());
+						else {
+							//SCM this is Hacky - we do not know the region, really. But GLOBAL is as good a guess as any...
+							logger.warn("We guessed a region in special case for add");
+							return new BDDSet(res, MemoryRegion.GLOBAL);
+						}
+					} else if(check.getTop()) {
 						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
 					} else if(check.getOk()) {
