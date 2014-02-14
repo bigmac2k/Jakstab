@@ -89,18 +89,24 @@ public class Architecture {
 				ExpressionFactory.createVariable("%SF", 1),
 				ExpressionFactory.createVariable("%ZF", 1)
 		}));
+		stackPointer = ExpressionFactory.createVariable("%esp", 32);
+		framePointer = ExpressionFactory.createVariable("%ebp", 32);
+		retAddrVar = ExpressionFactory.createVariable("retaddr", 32);
+		loopCounter = ExpressionFactory.createVariable("%ecx", 32);
+		stringSource = ExpressionFactory.createVariable("%esi", 32);
+		stringTarget = ExpressionFactory.createVariable("%edi", 32);
 	}
 
 	
 	private File specFile;
 	private Map<String, SSLInstruction> instructions;
 	private Map<String, List<SSLInstruction>> instrGroups;
-	private final RTLVariable stackPointer;
-	private final RTLVariable framePointer;
-	private final RTLVariable loopCounter;
-	private final RTLVariable stringSource;
-	private final RTLVariable stringTarget;
-	private final RTLVariable retAddrVar;
+	private final static RTLVariable stackPointer;
+	private final static RTLVariable framePointer;
+	private final static RTLVariable loopCounter;
+	private final static RTLVariable stringSource;
+	private final static RTLVariable stringTarget;
+	private final static RTLVariable retAddrVar;
 	private final MagicInstructions magicInstructions;
 
 	private SetOfVariables registers;
@@ -116,39 +122,34 @@ public class Architecture {
 		parseSSL(fileName);
 		magicInstructions = new MagicInstructions();
 		
-		stackPointer = ExpressionFactory.createVariable("%esp", 32);
-		framePointer = ExpressionFactory.createVariable("%ebp", 32);
-		retAddrVar = ExpressionFactory.createVariable("retaddr", 32);
-		loopCounter = ExpressionFactory.createVariable("%ecx", 32);
-		stringSource = ExpressionFactory.createVariable("%esi", 32);
-		stringTarget = ExpressionFactory.createVariable("%edi", 32);
+
 	}
 	
-	public RTLVariable stackPointer() {
+	public static RTLVariable stackPointer() {
 		return stackPointer;
 	}
 	
-	public RTLVariable returnAddressVariable() {
+	public static RTLVariable returnAddressVariable() {
 		return retAddrVar;
 	}
 	
-	public RTLVariable framePointer() {
+	public static RTLVariable framePointer() {
 		return framePointer;
 	}
 	
-	public RTLVariable programCounter() {
+	public static RTLVariable programCounter() {
 		return ExpressionFactory.pc;
 	}
 	
-	public RTLVariable loopCounter() {
+	public static RTLVariable loopCounter() {
 		return loopCounter;
 	}
 
-	public RTLVariable stringSource() {
+	public static RTLVariable stringSource() {
 		return stringSource;
 	}
 
-	public RTLVariable stringTarget() {
+	public static RTLVariable stringTarget() {
 		return stringTarget;
 	}
 

@@ -212,9 +212,10 @@ public final class SubstitutionState implements AbstractState {
 				post.aVarVal.remove(lhs);
 				// If RHS is a pure variable, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
-					if(ExpressionSubstitutionAnalysis.unevaledflags.getValue() 
-							&& Architecture.getStatusFlags().contains(lhs)
-							&& Architecture.getTemporaryVariables().contains(lhs)) {
+					if(ExpressionSubstitutionAnalysis.unevaledFlags.getValue() 
+							&& (Architecture.getStatusFlags().contains(lhs)
+							|| Architecture.getTemporaryVariables().contains(lhs))
+							&& !Architecture.returnAddressVariable().equals(lhs)) {
 						post.setValue(lhs, new SubstitutionElement(stmt.getRightHandSide()));
 					} else {
 						post.setValue(lhs, new SubstitutionElement(rhs));
