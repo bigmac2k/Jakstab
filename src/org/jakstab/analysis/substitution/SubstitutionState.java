@@ -212,10 +212,11 @@ public final class SubstitutionState implements AbstractState {
 				post.aVarVal.remove(lhs);
 				// If RHS is a pure variable, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
-					if(!Architecture.getStatusFlags().contains(lhs)) {
-						post.setValue(lhs, new SubstitutionElement(rhs));
-					} else {
+					if(ExpressionSubstitutionAnalysis.unevaledflags.getValue() &&
+							Architecture.getStatusFlags().contains(lhs)) {
 						post.setValue(lhs, new SubstitutionElement(stmt.getRightHandSide()));
+					} else {
+						post.setValue(lhs, new SubstitutionElement(rhs));
 					}
 				}
 
@@ -265,7 +266,6 @@ public final class SubstitutionState implements AbstractState {
 				// If RHS is a pure memory expression, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
 					post.setValue(lhs, new SubstitutionElement(rhs));	
-					//post.setValue(lhs, new SubstitutionElement(stmt.getRightHandSide()));
 				}
 
 				// If any expression in the map uses the LHS variable, it is now invalid, so remove it

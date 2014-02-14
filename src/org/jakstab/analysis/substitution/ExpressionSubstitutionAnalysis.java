@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import org.jakstab.AnalysisProperties;
+import org.jakstab.JOption;
 import org.jakstab.analysis.*;
 import org.jakstab.cfa.CFAEdge;
 import org.jakstab.cfa.Location;
@@ -41,6 +42,9 @@ public class ExpressionSubstitutionAnalysis implements ConfigurableProgramAnalys
 		p.setExplicit(true);
 	}
 
+	public static JOption<Boolean> unevaledflags =
+			JOption.create("unevaledflags", "bool", false, "Tracks non-evaluated flags");
+	
 	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(ExpressionSubstitutionAnalysis.class);
 	

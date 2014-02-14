@@ -40,7 +40,7 @@ public class ExpressionSubstitution implements CFATransformation {
 	
 	private Program program;
 	private CPAAlgorithm cpaAlgo;
-	
+
 	public ExpressionSubstitution(Program program) {
 		this.program = program;
 		cpaAlgo = CPAAlgorithm.createForwardAlgorithm(program, new ExpressionSubstitutionAnalysis());
