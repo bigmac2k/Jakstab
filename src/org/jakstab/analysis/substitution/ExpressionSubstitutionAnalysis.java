@@ -42,8 +42,8 @@ public class ExpressionSubstitutionAnalysis implements ConfigurableProgramAnalys
 		p.setExplicit(true);
 	}
 
-	public static JOption<Boolean> unevaledflags =
-			JOption.create("unevaledflags", "Tracks non-evaluated flags");
+	public static JOption<Boolean> unevaledFlags =
+			JOption.create("unevaled-flags", "Tracks non-evaluated flags");
 	
 	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(ExpressionSubstitutionAnalysis.class);
