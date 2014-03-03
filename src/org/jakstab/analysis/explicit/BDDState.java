@@ -732,6 +732,18 @@ public class BDDState implements AbstractState {
 						return new BDDSet(op0.getSet().bShl(op1.randomElement().intValue()), op0.getRegion());
 					assert false : "SHL called on something crazy";
 					break;
+				case ROL:
+					assert e.getOperandCount() == 2 : "ROL colled with " + e.getOperandCount() + "operands";
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op1.hasUniqueConcretization())
+						return new BDDSet(op0.getSet().bRol(op1.randomElement().intValue()), op0.getRegion());
+				case ROR:
+					assert e.getOperandCount() == 2 : "ROR colled with " + e.getOperandCount() + "operands";
+					op0 = abstractOperands[0];
+					op1 = abstractOperands[1];
+					if(op1.hasUniqueConcretization())
+						return new BDDSet(op0.getSet().bRor(op1.randomElement().intValue()), op0.getRegion());
 				case SAR:
 					assert e.getOperandCount() == 2 : "SAR called with " + e.getOperandCount() + " operands";
 					op0 = abstractOperands[0];
@@ -1301,7 +1313,7 @@ public class BDDState implements AbstractState {
 										} else {
 											if(nSingleton.getSet().bNot().bAnd(value.getSet().invert()).randomElement().longValue() == 0L) {
 												BDDSet notAllowed = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet().invert()), oldValue.getRegion());
-												logger.info("notAllowed: " + notAllowed);
+												logger.debug("notAllowed: " + notAllowed);
 												BDDSet newValue = new BDDSet(oldValue.getSet().intersect(notAllowed.getSet().invert()), region);
 												logger.debug("2: oldValue: " + oldValue + ", newValue: " + newValue);
 												post.setValue(v, newValue);
