@@ -266,4 +266,22 @@ public class RTLNumber extends AbstractRTLExpression implements RTLExpression, A
 	public boolean lessOrEqual(LatticeElement l) {
 		return equals(l);
 	}
+
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return this;
+	}
+
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return this;
+	}
+
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return this;
+	}
 }

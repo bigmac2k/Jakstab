@@ -168,6 +168,31 @@ public class ValuationState implements AbstractState {
 						break;
 					}
 
+					case AND:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.and(result);
+						}
+						break;
+
+					case OR:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.or(result);
+						}
+						break;
+
+					case XOR:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.xOr(result);
+						}
+						break;
+					
+					
 					default:
 						result = valueFactory.createTop(bitWidth);
 					}

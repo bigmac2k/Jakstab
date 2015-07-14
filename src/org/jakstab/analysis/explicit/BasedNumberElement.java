@@ -245,4 +245,22 @@ public class BasedNumberElement implements AbstractDomainElement, BitVectorType 
 		else 
 			return new BasedNumberElement(getRegion(), getNumber().zeroFill(first, last));
 	}
+
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop(value.getBitWidth());
+	}
+
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop(value.getBitWidth());
+	}
+
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop(value.getBitWidth());
+	}
 }

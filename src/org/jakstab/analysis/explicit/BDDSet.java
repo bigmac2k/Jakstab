@@ -262,4 +262,22 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public static BDDSet range(RTLNumber lo, RTLNumber hi) {
 		return BDDSet.range(MemoryRegion.GLOBAL, lo, hi);
 	}
+	
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
+	
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
+	
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
 }

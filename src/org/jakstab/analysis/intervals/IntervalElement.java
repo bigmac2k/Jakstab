@@ -20,6 +20,8 @@ package org.jakstab.analysis.intervals;
 import java.util.*;
 
 import org.jakstab.analysis.*;
+import org.jakstab.analysis.intervals.util.BitwiseOperations;
+import org.jakstab.analysis.intervals.util.Interval;
 import org.jakstab.rtl.BitVectorType;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLNumber;
@@ -570,6 +572,48 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			}
 			
 		}
+	}
+
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.AND(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
+	}
+
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.OR(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
+	}
+
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.XOR(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
 	}
 
 }
