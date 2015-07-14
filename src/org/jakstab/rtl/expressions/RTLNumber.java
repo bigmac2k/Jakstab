@@ -270,18 +270,18 @@ public class RTLNumber extends AbstractRTLExpression implements RTLExpression, A
 	@Override
 	public AbstractDomainElement and(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
-		return this;
+		return null;
 	}
 
 	@Override
 	public AbstractDomainElement or(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
-		return this;
+		return null;
 	}
 
 	@Override
 	public AbstractDomainElement xOr(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
-		return this;
+		return null;
 	}
 }
