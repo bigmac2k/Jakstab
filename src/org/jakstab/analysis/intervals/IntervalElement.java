@@ -576,7 +576,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 
 	@Override
 	public AbstractDomainElement and(AbstractDomainElement op) {
-		// TODO Auto-generated method stub
+		System.out.println("Computing AND");
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
 		MemoryRegion newRegion = region.join(other.region);
@@ -590,7 +590,6 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 
 	@Override
 	public AbstractDomainElement or(AbstractDomainElement op) {
-		// TODO Auto-generated method stub
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
 		MemoryRegion newRegion = region.join(other.region);
@@ -604,7 +603,6 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 
 	@Override
 	public AbstractDomainElement xOr(AbstractDomainElement op) {
-		// TODO Auto-generated method stub
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
 		MemoryRegion newRegion = region.join(other.region);

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns/graphml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:y="http://www.yworks.com/xml/graphml" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns/graphml http://www.yworks.com/xml/schema/graphml/1.0/ygraphml.xsd">
+<key for="node" id="d0" yfiles.type="nodegraphics"/>
+<key for="edge" id="d2" yfiles.type="edgegraphics"/>
+<graph edgedefault="directed">
+<node id="a0x080483f8_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x080483f8_0
+I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048402_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048402_0
+I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048406_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048406_0
+I: {gs=GS:0[0], esp=Stack:0[-4], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048405_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048405_0
+I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048406_1">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048406_1
+I: {gs=GS:0[0], esp=Stack:0[-4], retaddr=0[-18415616], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xface0000_1">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xface0000_1
+I: {} Mem: SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048405_1">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048405_1
+I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048406_2">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048406_2
+I: {gs=GS:0[0], esp=Stack:0[0], retaddr=0[-18415616], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x08048405_2">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x08048405_2
+I: {gs=GS:0[0], esp=Stack:0[-8], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x080483eb_1">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x080483eb_1
+I: {gs=GS:0[0], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xface0000_4">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xface0000_4
+I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xface0000_5">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xface0000_5
+I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: Stack: [-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xface0000_2">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xface0000_2
+I: {esp=Stack:0[0]} Mem: SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xface0000_3">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xface0000_3
+I: {gs=GS:0[0], esp=Stack:0[0]} Mem: SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x080483ec_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x080483ec_0
+I: {gs=GS:0[0], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x080483eb_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x080483eb_0
+I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: Stack: [-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0xfee70000_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0xfee70000_0
+I: {gs=GS:0[0], esp=Stack:0[0], retaddr=0[-18415616], eax=0[3]} Mem: Stack: [-16=0[11],-12=0[7],-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<node id="a0x080483f1_0">
+  <data key="d0"><y:ShapeNode><y:NodeLabel>
+0x080483f1_0
+I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+  </y:NodeLabel></y:ShapeNode></data>
+</node>
+<edge source="a0x080483eb_0" target="a0x080483eb_1">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := (esp + -4)</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x080483eb_1" target="a0x080483ec_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>mem32[esp] := ebp</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x080483ec_0" target="a0x080483f1_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>ebp := esp</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x080483f1_0" target="a0x080483f8_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>mem32[(ebp + -4)] := 7</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x080483f8_0" target="a0x08048402_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>mem32[(ebp + -8)] := 11</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048402_0" target="a0x08048405_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>eax := (mem32[(ebp + -4)] &amp; mem32[(ebp + -8)])</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048405_0" target="a0x08048405_1">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := ebp</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048405_1" target="a0x08048405_2">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>ebp := mem32[ebp]</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048405_2" target="a0x08048406_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := (esp + 4)</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048406_0" target="a0x08048406_1">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>retaddr := mem32[esp]</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048406_1" target="a0x08048406_2">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := (esp + 4)</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0x08048406_2" target="a0xfee70000_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>assume (retaddr == -18415616)</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0xface0000_1" target="a0xface0000_2">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := alloc()</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0xface0000_2" target="a0xface0000_3">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>gs := alloc()</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0xface0000_3" target="a0xface0000_4">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>esp := (esp + -4)</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0xface0000_4" target="a0xface0000_5">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>mem32[esp] := -18415616</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+<edge source="a0xface0000_5" target="a0x080483eb_0">
+  <data key="d2"><y:PolyLineEdge><y:Arrows source="none" target="standard"/>
+<y:LineStyle>color="#000000"</y:LineStyle>
+<y:EdgeLabel>assume true</y:EdgeLabel>
+  </y:PolyLineEdge></data>
+</edge>
+</graph>
+</graphml>

@@ -45,7 +45,7 @@ import antlr.ANTLRException;
 public class Main {
 	private static Logger logger = Logger.getLogger(Main.class);;
 
-	private final static String version = "0.8.3_arne";
+	private final static String version = "0.8.4_jonas";
 
 	private static volatile Algorithm activeAlgorithm;
 	private static volatile Thread mainThread;
