@@ -231,20 +231,38 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 
 	@Override
 	public AbstractDomainElement bitExtract(int first, int last) {
-		// TODO Auto-generated method stub
-		return null;
+		int newBitWidth = last - first + 1;
+		IntervalSetElement result = new IntervalSetElement(newBitWidth, region);
+		for(IntervalElement intervalElement : intervalSet){
+			result.add(intervalElement.bitExtract(first, last));
+		}
+		
+		result.mergeSetElements();
+		return result;	
 	}
 
 	@Override
 	public AbstractDomainElement signExtend(int first, int last) {
-		// TODO Auto-generated method stub
-		return null;
+		int newBitWidth = Math.max(bitWidth, last + 1);
+		IntervalSetElement result = new IntervalSetElement(newBitWidth, region);
+		for(IntervalElement intervalElement : intervalSet){
+			result.add(intervalElement.signExtend(first, last));
+		}
+		
+		result.mergeSetElements();
+		return result;	
 	}
 
 	@Override
 	public AbstractDomainElement zeroFill(int first, int last) {
-		// TODO Auto-generated method stub
-		return null;
+		int newBitWidth = Math.max(bitWidth, last + 1);
+		IntervalSetElement result = new IntervalSetElement(newBitWidth, region);
+		for(IntervalElement intervalElement : intervalSet){
+			result.add(intervalElement.zeroFill(first, last));
+		}
+		
+		result.mergeSetElements();
+		return result;	
 	}
 
 	@Override
