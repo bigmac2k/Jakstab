@@ -427,4 +427,31 @@ public class BitwiseOperations {
 		}
 		return b | d;
 	}
+	
+	public static Interval BIT_NEGATE(long a, long b) throws IllegalArgumentException {
+		if (b < a) {
+			throw new IllegalArgumentException("Illegal argument. a " + a + " and b" + b);
+		}
+		
+		return new Interval(~b, ~a);
+	}
+	
+	public static Interval naivBitNeg(long a, long b) throws IllegalArgumentException {
+		if (b < a) {
+			throw new IllegalArgumentException("Illegal argument. a " + a + " and b" + b);
+		}
+		
+		long min = ~b;
+		long max = ~a;
+		long tmp = 0;
+		for (long l = a; l <= b; l++) {
+			tmp = ~l;
+			if (tmp <= min) {
+				min = tmp;
+			} else if (tmp >= max) {
+				max = tmp;
+			}
+		}
+		return new Interval(min, max);
+	}
 }

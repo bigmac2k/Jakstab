@@ -329,4 +329,10 @@ public class WSet implements AbstractDomainElement {
 		return getTop();
 	}
 
+	@Override
+	public AbstractDomainElement bitNegate() {
+		// TODO Auto-generated method stub
+		return getTop();
+	}
+
 }

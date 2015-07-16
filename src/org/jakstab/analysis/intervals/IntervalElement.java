@@ -614,4 +614,11 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
 	}
 
+	@Override
+	public AbstractDomainElement bitNegate() {
+		Interval res = BitwiseOperations.BIT_NEGATE(left, right);
+		//may keep stride
+		return new IntervalElement(region, res.l(), res.g(), 1, bitWidth);
+	}
+
 }

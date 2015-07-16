@@ -280,4 +280,9 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		// TODO Auto-generated method stub
 		return topBW(set.bits());
 	}
+	@Override
+	public AbstractDomainElement bitNegate() {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
 }

@@ -91,6 +91,12 @@ public class Interval {
 		}
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		Interval i = (Interval) o;
+		return ((this.lowerBound == i.l()) && (this.upperBound == i.g()));
+	}
+	
 	public enum TYPE {
 		PP,
 		NP,

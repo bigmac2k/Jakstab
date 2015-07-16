@@ -192,6 +192,10 @@ public class ValuationState implements AbstractState {
 						}
 						break;
 					
+					case NEG:
+						result = aOperands.get(0);
+						result = result.bitNegate();
+						break;
 					
 					default:
 						result = valueFactory.createTop(bitWidth);

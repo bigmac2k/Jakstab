@@ -263,4 +263,10 @@ public class BasedNumberElement implements AbstractDomainElement, BitVectorType 
 		// TODO Auto-generated method stub
 		return getTop(value.getBitWidth());
 	}
+
+	@Override
+	public AbstractDomainElement bitNegate() {
+		// TODO Auto-generated method stub
+		return getTop(value.getBitWidth());
+	}
 }

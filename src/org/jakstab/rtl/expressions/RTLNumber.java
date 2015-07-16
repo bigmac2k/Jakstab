@@ -284,4 +284,10 @@ public class RTLNumber extends AbstractRTLExpression implements RTLExpression, A
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public AbstractDomainElement bitNegate() {
+		return null;
+		//return new RTLNumber(~value, bitWidth);
+	}
 }
