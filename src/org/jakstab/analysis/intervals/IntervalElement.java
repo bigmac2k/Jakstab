@@ -251,8 +251,11 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		if (isBot()) return true;
 		IntervalElement other = (IntervalElement)l;
 		assert bitWidth == other.bitWidth;
-		return other.left <= this.left && other.right >= this.left && 
-		other.stride <= this.stride;  
+		if(other.stride == 0) return this.stride == 0 && this.left == other.left; //singletons
+		return other.left <= this.left && other.right >= this.right && 
+		//only when other stride is a divisor of this stride can all elements
+		//in this be included in other
+		this.stride % other.stride == 0;
 	}
 
 	/*
