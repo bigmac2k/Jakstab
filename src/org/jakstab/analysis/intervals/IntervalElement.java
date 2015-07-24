@@ -86,13 +86,6 @@ integrity (Ival s l r) =
 	}
 	
 	public IntervalElement(MemoryRegion region, long left, long right, long stride, int bitWidth) {
-/*ival s l r
-           | s < 0 = Ival (-1) 0 0
-           | r < l  = ival s r l
-           | l == r || s == 0 = Ival 0 l l
-           | integrity tmp = tmp
-           | otherwise = ival s l $ ((r - l) `div` s) * s + l
-  where tmp = Ival s l r*/
 		this.region = region;
 		this.bitWidth = bitWidth;
 		if(right < left) {
@@ -215,16 +208,6 @@ integrity (Ival s l r) =
 
 	/*
 	 * @see org.jakstab.analysis.AbstractValue#join(org.jakstab.analysis.LatticeElement)
-join :: Ival -> Ival -> Ival
-join a@(Ival s1 l1 r1) b@(Ival s2 l2 r2)
-  | isBot a = b
-  | isBot b = a
-  | isTop a || isTop b = top
-  | otherwise = ival s l r
-  where
-  s = gcd (gcd s1 s2) (abs $ l1 - l2)
-  l = min l1 l2
-  r = max r1 r2
 	 */
 	@Override
 	public IntervalElement join(LatticeElement lt) {
@@ -252,7 +235,32 @@ join a@(Ival s1 l1 r1) b@(Ival s2 l2 r2)
 		}
 		return newStride;
 	}
-	
+
+	public IntervalElement meet(LatticeElement lt) {
+		IntervalElement other = (IntervalElement)lt;
+		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isTop()) return this;
+		if(isTop() || other.isBot()) return other;
+		//XXX scm: is this correct?
+		if(region != other.region) return getTop(getBitWidth());
+
+		long newRight = Math.min(getRight(), other.getRight());
+		IntervalElement a, b;
+		if(getLeft() >= other.getLeft()) {
+			a = this; //greater
+			b = other;
+		} else {
+			a = other; //greater
+			b = this;
+		}
+		if(a.getLeft() > newRight) return getBot(getBitWidth()); //no intersection
+		long astride = a.hasUniqueConcretization() ? 1 : a.getStride();
+		long bstride = b.hasUniqueConcretization() ? 1 : b.getStride();
+		long k = 0;
+		while(k <= astride && (k * bstride + a.getLeft() - b.getLeft()) % bstride != 0) k++;
+		if(k > astride) return getBot(getBitWidth());
+		return new IntervalElement(getRegion(), k * astride + a.getLeft(), newRight, lcm(astride, bstride), getBitWidth());
+	}
 
 	/*
 	 * @see org.jakstab.analysis.LatticeElement#isBot()
@@ -419,6 +427,12 @@ join a@(Ival s1 l1 r1) b@(Ival s2 l2 r2)
 		return a;
 	}
 
+	private static long lcm(long a, long b) {
+		assert a >= 0 && b >= 0 : "call to lcm with negative argument";
+		if(a == 0) return b;
+		if(b == 0) return a;
+		return (a * b) / gcd(a, b);
+	}
 
 	/**
 	 * Multiplies two interval elements.
