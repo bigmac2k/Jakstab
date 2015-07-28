@@ -53,14 +53,10 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	private final long stride;
 	private final MemoryRegion region;
 
-/*integrity :: Ival -> Bool
-integrity (Ival s l r) =
-     (s == (-1) && l == 0 && r == 0)
-  || (s == 0 && l == r)
-  || (s > 0 && r >= l && ((r - l) `div` s) * s + l == r)*/
 	private Boolean integrity() {
+		logger.debug("" + (bitWidth >= 1 && bitWidth <= 64) + " && " + (left >= minBW(getBitWidth()) && right <= maxBW(getBitWidth())) + " && (" + (stride == 0 && left == 1 && right == 0) + " || " + (stride == 0 && left == right) + " || " + (stride > 0 && (right - left) % stride == 0) + ")");
 		return
-			bitWidth > 1 && bitWidth <= 64
+			bitWidth >= 1 && bitWidth <= 64
 		&&	left >= minBW(getBitWidth()) && right <= maxBW(getBitWidth())
 		&&(	stride == 0 && left == 1 && right == 0		//bot
 		||	stride == 0 && left == right				//singleton
@@ -86,6 +82,7 @@ integrity (Ival s l r) =
 	}
 	
 	public IntervalElement(MemoryRegion region, long left, long right, long stride, int bitWidth) {
+		logger.debug("IntervalElement(" + region + ", " + left + ", " + right + ", " + stride + ", " + bitWidth + ")");
 		this.region = region;
 		this.bitWidth = bitWidth;
 		if(right < left) {
@@ -104,7 +101,7 @@ integrity (Ival s l r) =
 			if(this.right != right)
 				logger.info("ajdusted right border to reduction: " + right + " -> " + this.right);
 		}
-		assert integrity() : "tried to create invalid interval";
+		assert integrity() : "tried to create invalid interval: " + this + " (" + stride + "[" + left + ";" + right + "]" + bitWidth + ")";
 	}
 	
 	public long getLeft() {
@@ -221,7 +218,9 @@ integrity (Ival s l r) =
 		long l = Math.min(this.left, other.left);
 		long r = Math.max(this.right, other.right);
 		
-		return new IntervalElement(this.region, l, r, newStride, bitWidth);
+		IntervalElement ival = new IntervalElement(this.region, l, r, newStride, bitWidth);
+		logger.debug("" + this + ".join(" + other + ") = " + ival);
+		return ival;
 	}
 	
 	private long joinStride(IntervalElement other) {
@@ -287,9 +286,10 @@ integrity (Ival s l r) =
 	public boolean lessOrEqual(LatticeElement l) {
 		IntervalElement other = (IntervalElement)l;
 		assert getBitWidth() == other.getBitWidth();
-		assert getRegion() == other.getRegion();
+		//assert getRegion() == other.getRegion();
 		return
-			isBot()
+			getRegion().lessOrEqual(other.getRegion())
+		||	isBot()
 		||	other.isTop()
 		||	!other.isBot() && getLeft() >= other.getLeft() && getRight() <= other.getRight() && (other.getStride() == 0 || getStride() % other.getStride() == 0);
 	}
@@ -617,12 +617,16 @@ integrity (Ival s l r) =
 		}
 	}
 
-	private static long maxBW(int bitWidth) {
-		if(bitWidth == 1) return 1;
+	public IntervalElement openLeft() {
+		return new IntervalElement(getRegion(), minBW(getBitWidth()), getRight(), 1, getBitWidth());
+	}
+	public IntervalElement openRight() {
+		return new IntervalElement(getRegion(), getLeft(), maxBW(getBitWidth()), 1, getBitWidth());
+	}
+	public static long maxBW(int bitWidth) {
 		return (1l << (bitWidth - 1)) - 1;
 	}
-	private static long minBW(int bitWidth) {
-		if(bitWidth == 1) return 0;
+	public static long minBW(int bitWidth) {
 		return -maxBW(bitWidth) - 1;
 	}
 
