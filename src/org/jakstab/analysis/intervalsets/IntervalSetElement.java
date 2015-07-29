@@ -1,7 +1,10 @@
 package org.jakstab.analysis.intervalsets;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.jakstab.analysis.AbstractDomainElement;
@@ -12,7 +15,7 @@ import org.jakstab.analysis.intervals.IntervalElement;
 import org.jakstab.rtl.expressions.RTLNumber;
 import org.jakstab.util.FastSet;
 
-public class IntervalSetElement implements AbstractDomainElement, Iterable<IntervalElement>{
+public class IntervalSetElement implements AbstractDomainElement, Iterable<Long>{
 
 	private Set<IntervalElement> intervalSet;
 	
@@ -21,10 +24,14 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 	private final int bitWidth;
 	
 	public IntervalSetElement(RTLNumber number){
+		this(MemoryRegion.GLOBAL,number);
+	}
+	
+	public IntervalSetElement(MemoryRegion region, RTLNumber number){
 		bitWidth = number.getBitWidth();
 		intervalSet = new FastSet<IntervalElement>();
 		intervalSet.add(new IntervalElement(number));
-		region = MemoryRegion.GLOBAL;
+		this.region = region;
 	}
 	
 	public IntervalSetElement(IntervalSetElement intervalSetElement) {
@@ -87,7 +94,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		if(isBot()) return true;
 		IntervalSetElement other = (IntervalSetElement)l;
 		boolean lessOrEqualFound = false;
-		for(IntervalElement otherElement: other){
+		for(IntervalElement otherElement: other.getIntervalSet()){
 			lessOrEqualFound = false;
 			for(IntervalElement intervalElement: intervalSet){
 				if(intervalElement.lessOrEqual(otherElement)){
@@ -133,20 +140,49 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 	@Override
 	public Collection<? extends AbstractDomainElement> readStorePowerSet(int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
-		// TODO Auto-generated method stub
-		return null;
+		if (isTop() || size() > MAX_CONCRETIZATION_SIZE) 
+			return Collections.singleton(IntervalElement.getTop(bitWidth));
+		
+		Set<AbstractDomainElement> res = new FastSet<AbstractDomainElement>();
+		for (long offset : this) {
+			res.add(store.get(getRegion(), offset, bitWidth));
+		}
+		return res;
 	}
 
 	@Override
 	public AbstractDomainElement readStore(int bitWidth, PartitionedMemory<? extends AbstractDomainElement> store) {
-		// TODO Auto-generated method stub
-		return null;
+		if (isTop()) return IntervalElement.getTop(bitWidth);
+		AbstractDomainElement res = null;
+		for (Long i : this) {
+			if(res == null){
+				res = store.get(region, i, bitWidth);
+			}
+			else{
+				res.join(store.get(region, i, bitWidth));
+			}
+		}
+		
+		return res;
 	}
 
 	@Override
 	public <A extends AbstractDomainElement> void writeStore(int bitWidth, PartitionedMemory<A> store, A value) {
-		// TODO Auto-generated method stub
-		
+		if (!getRegion().isSummary() && size() == 1) {
+			// Strong update
+			store.set(getRegion(), 
+					intervalSet.iterator().next().getLeft(), 
+					bitWidth, value);
+		} else {
+			// Weak update
+			if (getRegion().isTop() || size() > 100)
+				store.setTop(getRegion());
+			else {
+				for (Long i : this) {
+					store.weakUpdate(getRegion(), i, bitWidth, value);
+				}
+			}
+		}
 	}
 
 	@Override
@@ -154,12 +190,14 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		IntervalSetElement result = new IntervalSetElement(bitWidth, region);
 		IntervalSetElement other = (IntervalSetElement) op;
 		for(IntervalElement intervalElement: intervalSet){
-			for(IntervalElement otherElement: other){
+			for(IntervalElement otherElement: other.intervalSet){
 				result.add(intervalElement.plus(otherElement));
 			}
 		}
 		
 		result.mergeSetElements();
+		
+		assert !result.getIntervalSet().isEmpty() : "Result is empty!";
 		return result;
 	}
 
@@ -183,6 +221,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 			intervalSet = new FastSet<IntervalElement>(IntervalElement.getTop(bitWidth));
 		}
 		else{			
+			assert !newIntervalSet.isEmpty() : "Result is empty!";
 			intervalSet = newIntervalSet;
 		}
 	}
@@ -213,6 +252,8 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 				return;
 			}
 		}
+		
+		intervalSet.add(elementToAdd);
 	}
 
 	@Override
@@ -220,7 +261,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		IntervalSetElement result = new IntervalSetElement(bitWidth, region);
 		IntervalSetElement other = (IntervalSetElement) op;
 		for(IntervalElement intervalElement: intervalSet){
-			for(IntervalElement otherElement: other){
+			for(IntervalElement otherElement: other.intervalSet){
 				result.add(intervalElement.multiply(otherElement));
 			}
 		}
@@ -270,7 +311,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		IntervalSetElement result = new IntervalSetElement(bitWidth, region);
 		IntervalSetElement other = (IntervalSetElement) op;
 		for(IntervalElement intervalElement: intervalSet){
-			for(IntervalElement otherElement: other){
+			for(IntervalElement otherElement: other.intervalSet){
 				result.add(intervalElement.and(otherElement));
 			}
 		}
@@ -284,7 +325,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		IntervalSetElement result = new IntervalSetElement(bitWidth, region);
 		IntervalSetElement other = (IntervalSetElement) op;
 		for(IntervalElement intervalElement: intervalSet){
-			for(IntervalElement otherElement: other){
+			for(IntervalElement otherElement: other.intervalSet){
 				result.add(intervalElement.or(otherElement));
 			}
 		}
@@ -298,7 +339,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 		IntervalSetElement result = new IntervalSetElement(bitWidth, region);
 		IntervalSetElement other = (IntervalSetElement) op;
 		for(IntervalElement intervalElement: intervalSet){
-			for(IntervalElement otherElement: other){
+			for(IntervalElement otherElement: other.intervalSet){
 				result.add(intervalElement.xOr(otherElement));
 			}
 		}
@@ -317,15 +358,32 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 	}
 
 	@Override
-	public Iterator<IntervalElement> iterator() {
-		return intervalSet.iterator();
+	public Iterator<Long> iterator() {
+		return new Iterator<Long>() {
+			Iterator<IntervalElement> intervalIterator = intervalSet.iterator();
+			Iterator<Long> currentIterator = intervalIterator.hasNext() ? intervalIterator.next().iterator() : null;
+			
+			public void remove() {
+				throw new UnsupportedOperationException();
+			}
+			
+			public Long next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				if(!currentIterator.hasNext()) currentIterator = intervalIterator.next().iterator();
+				return currentIterator.next();
+			}
+			
+			public boolean hasNext() {
+				return currentIterator != null && (currentIterator.hasNext() || intervalIterator.hasNext());
+			}
+		};
 	}
 	
 	@Override
 	public String toString(){
 		String s = "";
 		s += "{";
-		int i = intervalSet.size();
+		int i = intervalSet.size()-1;
 		for(IntervalElement intervalElement : intervalSet){
 			if(i>0){
 				s += intervalElement.toString() + ", ";				
@@ -333,6 +391,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 			else{
 				s += intervalElement.toString() + "}";				
 			}
+			i--;
 		}
 		
 		return s;
@@ -352,7 +411,7 @@ public class IntervalSetElement implements AbstractDomainElement, Iterable<Inter
 				return false;
 			}
 		}
-		for(IntervalElement otherIntervalElement : other){
+		for(IntervalElement otherIntervalElement : other.getIntervalSet()){
 			if(!intervalSet.contains(otherIntervalElement)){
 				return false;
 			}

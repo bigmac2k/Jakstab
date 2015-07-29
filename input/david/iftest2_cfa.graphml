@@ -6,19 +6,19 @@
 <node id="a0x080483fe_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483fe_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=0[4],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[4]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x080483fc_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483fc_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=0[4],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[4]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048405_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048405_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=0[1],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xface0000_1">
@@ -30,103 +30,111 @@ I: {} Mem: SData = intact
 <node id="a0x080483eb_1">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483eb_1
-I: {gs=GS:0[0], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-8]}} Mem: Global: [0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xface0000_4">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0xface0000_4
-I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: SData = intact
+I: {gs={0[0]}, esp={0[-4]}} Mem: SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xface0000_5">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0xface0000_5
-I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: Stack: [-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-4]}} Mem: Global: [0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xface0000_2">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0xface0000_2
-I: {esp=Stack:0[0]} Mem: SData = intact
+I: {esp={0[0]}} Mem: SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048407_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048407_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=0[4],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[4]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xface0000_3">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0xface0000_3
-I: {gs=GS:0[0], esp=Stack:0[0]} Mem: SData = intact
+I: {gs={0[0]}, esp={0[0]}} Mem: SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x0804840e_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x0804840e_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x080483ec_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483ec_0
-I: {gs=GS:0[0], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-8]}} Mem: Global: [0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x080483eb_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483eb_0
-I: {gs=GS:0[0], esp=Stack:0[-4]} Mem: Stack: [-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-4]}} Mem: Global: [0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0xfee70000_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0xfee70000_0
-I: {gs=GS:0[0], esp=Stack:0[0], retaddr=0[-18415616], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[0]}, retaddr={0[-18415616]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, esp={0[0]}, retaddr={0[-18415616]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048412_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048412_0
-I: {gs=GS:0[0], esp=Stack:0[-4], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-4]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, esp={0[-4]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x080483f1_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x080483f1_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8]} Mem: Stack: [-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}} Mem: Global: [0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048411_0">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048411_0
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048412_1">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048412_1
-I: {gs=GS:0[0], esp=Stack:0[-4], retaddr=0[-18415616], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-4]}, retaddr={0[-18415616]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, esp={0[-4]}, retaddr={0[-18415616]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048411_1">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048411_1
-I: {gs=GS:0[0], ebp=Stack:0[-8], esp=Stack:0[-8], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, ebp={0[-8]}, esp={0[-8]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048412_2">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048412_2
-I: {gs=GS:0[0], esp=Stack:0[0], retaddr=0[-18415616], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[0]}, retaddr={0[-18415616]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, esp={0[0]}, retaddr={0[-18415616]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <node id="a0x08048411_2">
   <data key="d0"><y:ShapeNode><y:NodeLabel>
 0x08048411_2
-I: {gs=GS:0[0], esp=Stack:0[-8], eax=9[-2147483645;10]} Mem: Stack: [-12=9[-2147483645;10],-4=0[-18415616],] SData = intact
+I: {gs={0[0]}, esp={0[-8]}, eax={0[10], 9[1;10], 0[1]}} Mem: Global: [0xfffffff4={0[10], 9[1;10], 0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
+I: {gs={0[0]}, esp={0[-8]}, eax={0[1]}} Mem: Global: [0xfffffff4={0[1]},0xfffffff8={TOP},0xfffffffc={0[-18415616]},] SData = intact
   </y:NodeLabel></y:ShapeNode></data>
 </node>
 <edge source="a0x080483eb_0" target="a0x080483eb_1">
