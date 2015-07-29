@@ -44,36 +44,27 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(IntervalElement.class);
 	
-	private static IntervalElement TOP1 = new IntervalElement(MemoryRegion.GLOBAL, -1, 0, 1, 1);
-	private static IntervalElement TOP8 = new IntervalElement(MemoryRegion.GLOBAL, Byte.MIN_VALUE, Byte.MAX_VALUE, 1, 8);
-	private static IntervalElement TOP16 = new IntervalElement(MemoryRegion.GLOBAL, Short.MIN_VALUE, Short.MAX_VALUE, 1, 16);
-	private static IntervalElement TOP32 = new IntervalElement(MemoryRegion.TOP, Integer.MIN_VALUE, Integer.MAX_VALUE, 1, 32);
-	private static IntervalElement TOP64 = new IntervalElement(MemoryRegion.TOP, Long.MIN_VALUE, Long.MAX_VALUE, 1, 64);
-	// Not quite right, but should not matter
-	private static IntervalElement TOP80 = new IntervalElement(MemoryRegion.TOP, Long.MIN_VALUE, Long.MAX_VALUE, 1, 80);
-	
 	private static final int MAX_CONCRETIZATION_SIZE = 100;
 	
 	public static IntervalElement TRUE = new IntervalElement(ExpressionFactory.TRUE);
 	public static IntervalElement FALSE = new IntervalElement(ExpressionFactory.FALSE);
-	
-	public static IntervalElement getTop(int bitWidth) {
-		switch (bitWidth) {
-		case 1: return TOP1;
-		case 8: return TOP8;
-		case 16: return TOP16;
-		case 32: return TOP32;
-		case 64: return TOP64;
-		case 80: return TOP80;
-		default: throw new RuntimeException("No top interval element with bitwidth " + bitWidth);
-		}
-	}
 	
 	private final long left;
 	private final long right;
 	private final int bitWidth;
 	private final long stride;
 	private final MemoryRegion region;
+
+	private Boolean integrity() {
+		logger.debug("" + (bitWidth >= 1 && bitWidth <= 64) + " && " + (left >= minBW(getBitWidth()) && right <= maxBW(getBitWidth())) + " && (" + (stride == 0 && left == 1 && right == 0) + " || " + (stride == 0 && left == right) + " || " + (stride > 0 && (right - left) % stride == 0) + ")");
+		return
+			bitWidth >= 1 && bitWidth <= 64
+		&&	left >= minBW(getBitWidth()) && right <= maxBW(getBitWidth())
+		&&(	stride == 0 && left == 1 && right == 0		//bot
+		||	stride == 0 && left == right				//singleton
+		||	stride > 0 && (right - left) % stride == 0	//normal + top
+		);
+	}
 	
 	public IntervalElement(RTLNumber number) {
 		this(number, number);
@@ -93,20 +84,26 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 	
 	public IntervalElement(MemoryRegion region, long left, long right, long stride, int bitWidth) {
+		logger.debug("IntervalElement(" + region + ", " + left + ", " + right + ", " + stride + ", " + bitWidth + ")");
 		this.region = region;
-		this.left = left;
-		this.right = right;
-
-		// For single-value intervals, set stride to zero
-		if (right - left == 0) {
+		this.bitWidth = bitWidth;
+		if(right < left) {
+			logger.info("creating bot element");
+			this.left = 1;
+			this.right = 1;
+			this.stride = 0;
+		} else if(left == right) {
+			this.left = left;
+			this.right = right;
 			this.stride = 0;
 		} else {
+			this.left = left;
 			this.stride = stride;
+			this.right = ((right - left) / stride) * stride + left; //adjust to reduced border
+			if(this.right != right)
+				logger.info("ajdusted right border to reduction: " + right + " -> " + this.right);
 		}
-		this.bitWidth = bitWidth;
-
-		assert stride != 0 || right == left : "Stride 0 for interval of size > 1!";
-		assert stride == 0 || (right - left) % stride == 0 : "Stride " + stride + " does not fit with interval bounds: " + left + ";" + right + "!";
+		assert integrity() : "tried to create invalid interval: " + this + " (" + stride + "[" + left + ";" + right + "]" + bitWidth + ")";
 	}
 	
 	public long getLeft() {
@@ -118,6 +115,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 	
 	public long size() {
+		if (isBot()) return 0;
 		if (stride == 0) return 1;
 		return (right - left)/stride + 1;
 	}
@@ -134,6 +132,15 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public long getStride() {
 		return stride;
 	}
+
+	public static IntervalElement getTop(int bitWidth) {
+		return new IntervalElement(MemoryRegion.TOP, minBW(bitWidth), maxBW(bitWidth), 1, bitWidth);
+	}
+
+	public static IntervalElement getBot(int bitWidth) {
+		//XXX scm: global region for top?
+		return new IntervalElement(MemoryRegion.GLOBAL, 1, 0, 1, bitWidth);
+	}
 	
 	/**
 	 * Widening by extending the interval bounds infinitely into the direction of 
@@ -147,6 +154,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		assert towards.bitWidth == bitWidth;
 		IntervalElement result;
 		IntervalElement top = getTop(bitWidth);
+		if(isBot()) return towards;
+		if(towards.isBot()) return this;
 		if (region != towards.region) return top;
 		long newStride = joinStride(towards);
 		
@@ -171,6 +180,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			}
 		}
 		// if (this != result) logger.debug("Widening " + this + " to " + result);
+		assert lessOrEqual(result) : "Widening unsound!";
 		return result;
 	}
 
@@ -185,12 +195,12 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		}
 		Set<RTLNumber> result = new FastSet<RTLNumber>();
 		
-		if (stride == 0) {
-			result.add(ExpressionFactory.createNumber(left, bitWidth));
-		} else {
-			for (long v = left; v <= right; v+=stride) {
-				result.add(ExpressionFactory.createNumber(v, bitWidth));
-			}
+		if(!isBot()) {
+			if (stride == 0)
+				result.add(ExpressionFactory.createNumber(left, bitWidth));
+			else
+				for (long v : this)
+					result.add(ExpressionFactory.createNumber(v, bitWidth));
 		}
 		return result;
 	}
@@ -205,14 +215,14 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		if (isTop() || other.isBot()) return this;
 		if (isBot() || other.isTop()) return other;
 		if (this.region != other.region) return getTop(bitWidth);
-		if (this.leftOpen() && other.rightOpen()) return getTop(bitWidth);
-		if (other.leftOpen() && this.rightOpen()) return getTop(bitWidth);
 		
 		long newStride = joinStride(other);
 		long l = Math.min(this.left, other.left);
 		long r = Math.max(this.right, other.right);
 		
-		return new IntervalElement(this.region, l, r, newStride, bitWidth);
+		IntervalElement ival = new IntervalElement(this.region, l, r, newStride, bitWidth);
+		logger.debug("" + this + ".join(" + other + ") = " + ival);
+		return ival;
 	}
 	
 	private long joinStride(IntervalElement other) {
@@ -221,19 +231,45 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		if (this.stride == 0 && other.stride == 0)
 			newStride = Math.abs(other.left - this.left);
 		else {
-			newStride = gcdStride(stride, other.stride);
-			newStride = gcdStride(newStride, Math.abs(left - other.left));
+			newStride = gcd(stride, other.stride);
+			newStride = gcd(newStride, Math.abs(left - other.left));
 		}
 		return newStride;
 	}
-	
+
+	public IntervalElement meet(LatticeElement lt) {
+		IntervalElement other = (IntervalElement)lt;
+		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isTop()) return this;
+		if(isTop() || other.isBot()) return other;
+		//XXX scm: is this correct?
+		if(region != other.region) return getTop(getBitWidth());
+
+		long newRight = Math.min(getRight(), other.getRight());
+		IntervalElement a, b;
+		if(getLeft() >= other.getLeft()) {
+			a = this; //greater
+			b = other;
+		} else {
+			a = other; //greater
+			b = this;
+		}
+		if(a.getLeft() > newRight) return getBot(getBitWidth()); //no intersection
+		long astride = a.hasUniqueConcretization() ? 1 : a.getStride();
+		long bstride = b.hasUniqueConcretization() ? 1 : b.getStride();
+		long k = 0;
+		while(k <= astride && (k * bstride + a.getLeft() - b.getLeft()) % bstride != 0) k++;
+		if(k > astride) return getBot(getBitWidth());
+		return new IntervalElement(getRegion(), k * astride + a.getLeft(), newRight, lcm(astride, bstride), getBitWidth());
+	}
 
 	/*
 	 * @see org.jakstab.analysis.LatticeElement#isBot()
 	 */
 	@Override
 	public boolean isBot() {
-		return false;
+		//XXX scm: What about region?
+		return getStride() == 0 && getLeft() == 1 && getRight() == 0;
 	}
 
 	/*
@@ -241,8 +277,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	 */
 	@Override
 	public boolean isTop() {
-		//return this == getTop(bitWidth);
-		return getTop(bitWidth).equals(this);
+		//XXX scm: What about region?
+		return getStride() == 1 && getLeft() == minBW(getBitWidth()) && getRight() == maxBW(getBitWidth());
 	}
 	
 	/*
@@ -250,11 +286,14 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	 */
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
-		if (isBot()) return true;
 		IntervalElement other = (IntervalElement)l;
-		assert bitWidth == other.bitWidth;
-		return other.left <= this.left && other.right >= this.left && 
-		other.stride <= this.stride;  
+		assert getBitWidth() == other.getBitWidth();
+		//assert getRegion() == other.getRegion();
+		return
+			getRegion().lessOrEqual(other.getRegion())
+		||	isBot()
+		||	other.isTop()
+		||	!other.isBot() && getLeft() >= other.getLeft() && getRight() <= other.getRight() && (other.getStride() == 0 || getStride() % other.getStride() == 0);
 	}
 
 	/*
@@ -263,6 +302,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@Override
 	public String toString() {
 		if (isTop()) return Characters.TOP;
+		if (isBot()) return Characters.BOT;
 		StringBuilder s = new StringBuilder();
 		if (region != MemoryRegion.GLOBAL) 
 			s.append(region).append(":");
@@ -333,11 +373,11 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 
 	public boolean leftOpen() {
-		return left == getTop(bitWidth).getLeft();
+		return getLeft() == getTop(bitWidth).getLeft();
 	}
 	
 	public boolean rightOpen() {
-		return right == getTop(bitWidth).getRight();
+		return getRight() == getTop(bitWidth).getRight();
 	}
 	
 	/**
@@ -351,6 +391,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		
 		IntervalElement op = (IntervalElement)other;
 		assert bitWidth == op.bitWidth;
+		if(isBot() || op.isBot()) return getBot(bitWidth);
 		MemoryRegion newRegion = region.join(op.region);
 		if (newRegion.isTop()) return getTop(bitWidth);
 
@@ -363,11 +404,12 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			return getTop(bitWidth);
 		}
 		
-		return new IntervalElement(newRegion, l, r, gcdStride(stride, op.stride), bitWidth);
+		return new IntervalElement(newRegion, l, r, gcd(stride, op.stride), bitWidth);
 	}
 	
 	@Override
 	public IntervalElement negate() {
+		if(isBot()) return this;
 		if (left == getTop(bitWidth).left) {
 			// If this interval is just the minimum value, it's negation is the same value again in 2s complement.
 			if (left == right) return this;
@@ -376,22 +418,22 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			return new IntervalElement(region, -right, -left, stride, bitWidth);
 		}
 	}
-	
-	private static long gcdStride(long s1, long s2) {
-		if (s1 == 0) return s2;
-		else if (s2 == 0) return s1;
-		else return gcd(s1, s2); 
-	}
-	
+
 	private static long gcd(long a, long b) {
-		long r;
-		do {
-			r = a % b;
+		assert a >= 0 && b >= 0 : "call to gcd with negative argument";
+		while(b != 0) {
+			long tmp = a;
 			a = b;
-			b = r;
+			b = tmp % b;
 		}
-		while (r > 0);
 		return a;
+	}
+
+	private static long lcm(long a, long b) {
+		assert a >= 0 && b >= 0 : "call to lcm with negative argument";
+		if(a == 0) return b;
+		if(b == 0) return a;
+		return (a * b) / gcd(a, b);
 	}
 
 	/**
@@ -412,6 +454,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public IntervalElement multiply(AbstractDomainElement other) {
 
 		IntervalElement op = (IntervalElement)other;
+
+		if(isBot() || op.isBot()) return getBot(bitWidth);
 
 		MemoryRegion newRegion = region.join(op.region);
 		int newBitWidth = bitWidth * 2; 
@@ -450,6 +494,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 	
 	public IntervalElement bitExtract(int first, int last) {
+		if(isBot()) return this;
 		int newBitWidth = last - first + 1;
 		if (region == MemoryRegion.GLOBAL) {
 			// Check if operand is already within bit range. No bit range 
@@ -466,6 +511,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 	
 	public IntervalElement signExtend(int first, int last) {
+		if(isBot()) return this;
 		int newBitWidth = Math.max(bitWidth, last + 1);
 		if (region == MemoryRegion.GLOBAL) {
 			// If region is global, return the value with new bit width
@@ -477,6 +523,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	}
 
 	public IntervalElement zeroFill(int first, int last) {
+		if(isBot()) return this;
 		int newBitWidth = Math.max(bitWidth, last + 1);
 		if (region == MemoryRegion.GLOBAL && left >= 0 && right < (1 << first)) {
 			// If value is non-negative and does not set any
@@ -520,20 +567,16 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public AbstractDomainElement readStore(int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
 
+		if(isBot()) return this;
 		if (isTop()) return IntervalElement.getTop(bitWidth);
 		
-		long offset = getLeft(); 
-		AbstractDomainElement res = store.get(getRegion(), offset, bitWidth);
-		if (getStride() > 0) {
-			offset+=getStride();
-			for (;offset <= getRight(); offset += getStride()) {
-				if (res.isTop()) {
-					logger.info("Joined intervals to TOP while reading memory range " + this);
-					return res;
-				}
-				AbstractDomainElement v = store.get(getRegion(), offset, bitWidth);
-				res = res.join(v);
-			}
+		AbstractDomainElement res = null;
+		for(long offset : this) {
+			AbstractDomainElement read = store.get(getRegion(), offset, bitWidth);
+			if(res == null)
+				res = read;
+			else
+				res = res.join(read);
 		}
 		return res;
 	}
@@ -543,8 +586,9 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			int bitWidth,
 			PartitionedMemory<? extends AbstractDomainElement> store) {
 		
+		if(isBot()) return Collections.singleton(getBot(bitWidth));
 		if (isTop() || size() > MAX_CONCRETIZATION_SIZE) 
-			return Collections.singleton(IntervalElement.getTop(bitWidth));
+			return Collections.singleton(getTop(bitWidth));
 		
 		Set<AbstractDomainElement> res = new FastSet<AbstractDomainElement>();
 		for (long offset : this) {
@@ -556,6 +600,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@Override
 	public <A extends AbstractDomainElement> void writeStore(int bitWidth,
 			PartitionedMemory<A> store, A value) {
+		if(isBot()) return;
 		if (!getRegion().isSummary() && size() == 1) {
 			// Strong update
 			store.set(getRegion(), 
@@ -621,4 +666,16 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		return new IntervalElement(region, res.l(), res.g(), 1, bitWidth);
 	}
 
+	public IntervalElement openLeft() {
+		return new IntervalElement(getRegion(), minBW(getBitWidth()), getRight(), 1, getBitWidth());
+	}
+	public IntervalElement openRight() {
+		return new IntervalElement(getRegion(), getLeft(), maxBW(getBitWidth()), 1, getBitWidth());
+	}
+	public static long maxBW(int bitWidth) {
+		return (1l << (bitWidth - 1)) - 1;
+	}
+	public static long minBW(int bitWidth) {
+		return -maxBW(bitWidth) - 1;
+	}
 }

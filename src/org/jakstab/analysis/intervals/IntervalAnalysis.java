@@ -147,48 +147,119 @@ public class IntervalAnalysis implements ConfigurableProgramAnalysis {
 				return post;
 			}
 
+			private Boolean restrictable(RTLExpression op) {
+				if(op instanceof RTLVariable)
+					return true;
+				if(op instanceof RTLMemoryLocation)
+					return true;
+				return false;
+			}
+			private MemoryRegion approxlbregion(MemoryRegion a, MemoryRegion b) {
+				if(a.isTop() || b.isBot()) return b;
+				if(b.isTop() || a.isBot()) return a;
+				//should be top is mo real meet
+				if(!a.equals(b)) return MemoryRegion.TOP;
+				return a;
+			}
+			private void restrict(ValuationState post, RTLExpression exp, IntervalElement expvalue, IntervalElement by) {
+				MemoryRegion newRegion = approxlbregion(expvalue.getRegion(), by.getRegion());
+				if(!newRegion.isTop() && expvalue.getBitWidth() == by.getBitWidth()) {
+					IntervalElement newvalue = expvalue.meet(by);
+					if (exp instanceof RTLVariable) {
+						RTLVariable v = (RTLVariable) exp;
+						logger.info("restricting variable " + v + " with contents " + expvalue + " to " + newvalue);
+						post.setVariableValue(v, newvalue);
+					} else if (exp instanceof RTLMemoryLocation) {
+						RTLMemoryLocation m = (RTLMemoryLocation) exp;
+						AbstractDomainElement evaledAddress = iState.abstractEval(m.getAddress());
+						logger.info("restricting memoryLocation[" + evaledAddress + "] with contents " + expvalue + " to " + newvalue);
+						post.setMemoryValue(evaledAddress, m.getBitWidth(), newvalue);
+					} else
+						logger.info("skipping restriction of " + exp);
+				} else
+					logger.info("skipping restriction - top region or bitwidth: " + expvalue.getRegion() + " U " + by.getRegion() + " != T && " + expvalue.getBitWidth() + " == " + by.getBitWidth());
+			}
+
+			private AbstractState restrictAssume(ValuationState post, RTLExpression assumption, Boolean negated) {
+				if(assumption instanceof RTLOperation) {
+					RTLOperation op = (RTLOperation) assumption;
+					switch (op.getOperator()) {
+						case NOT:
+							logger.info("found assumption with !");
+							return restrictAssume(post, op.getOperands()[0], !negated);
+						case EQUAL:
+							logger.info("found assumption with ==");
+							if (restrictable(op.getOperands()[0]) || restrictable(op.getOperands()[1])) {
+								IntervalElement evaledL = (IntervalElement) iState.abstractEval(op.getOperands()[0]);
+								IntervalElement evaledR = (IntervalElement) iState.abstractEval(op.getOperands()[1]);
+								if (!negated || evaledL.hasUniqueConcretization())
+									restrict(post, op.getOperands()[1], evaledR, evaledL);
+								if (!negated || evaledR.hasUniqueConcretization())
+									restrict(post, op.getOperands()[0], evaledL, evaledR);
+								return post;
+							}
+							break;
+						case LESS_OR_EQUAL:
+							logger.info("found assumption with <=");
+							if (restrictable(op.getOperands()[0]) || restrictable(op.getOperands()[1])) {
+								IntervalElement evaledL = (IntervalElement) iState.abstractEval(op.getOperands()[0]);
+								IntervalElement evaledR = (IntervalElement) iState.abstractEval(op.getOperands()[1]);
+								if (negated) {
+									if (evaledL.getRight() != IntervalElement.minBW(evaledL.getBitWidth())) {
+										IntervalElement rightRestriction = new IntervalElement(evaledL.getRegion(), evaledL.getRight() - 1, evaledL.getRight() - 1, 1, evaledL.getBitWidth()).openLeft();
+										restrict(post, op.getOperands()[1], evaledR, rightRestriction);
+									} //else set variable/memory to bot?
+									if (evaledR.getLeft() != IntervalElement.maxBW(evaledR.getBitWidth())) {
+										IntervalElement leftRestriction = new IntervalElement(evaledR.getRegion(), evaledR.getLeft() + 1, evaledR.getLeft() + 1, 1, evaledR.getBitWidth()).openRight();
+										restrict(post, op.getOperands()[0], evaledL, leftRestriction);
+									} //else set variable/memory to bot?
+								} else {
+									restrict(post, op.getOperands()[0], evaledL, evaledR.openLeft());
+									restrict(post, op.getOperands()[1], evaledR, evaledL.openRight());
+								}
+								return post;
+							}
+							break;
+						case LESS: {
+							logger.info("found assumption with <");
+							RTLExpression rewrite = ExpressionFactory.createNot(ExpressionFactory.createLessOrEqual(op.getOperands()[1], op.getOperands()[0]));
+							return restrictAssume(post, rewrite, negated);
+						}
+						case UNSIGNED_LESS_OR_EQUAL: {
+							logger.info("found assumption with u<=");
+							IntervalElement evaledL = (IntervalElement) iState.abstractEval(op.getOperands()[0]);
+							IntervalElement evaledR = (IntervalElement) iState.abstractEval(op.getOperands()[1]);
+							//XXX scm TODO check this - it most certainly is a bug in the ssl generator
+							//if (evaledL.getLeft() >= 0 && evaledL.getRight() >= 0 && evaledR.getLeft() >= 0 && evaledR.getRight() >= 0) {
+								RTLExpression rewrite = ExpressionFactory.createLessOrEqual(op.getOperands()[0], op.getOperands()[1]);
+								return restrictAssume(post, rewrite, negated);
+							//}
+							//break;
+						}
+						case UNSIGNED_LESS: {
+							logger.info("found assumption with u<");
+							IntervalElement evaledL = (IntervalElement) iState.abstractEval(op.getOperands()[0]);
+							IntervalElement evaledR = (IntervalElement) iState.abstractEval(op.getOperands()[1]);
+							//XXX scm TODO check this - it most certainly is a bug in the ssl generator
+							//if (evaledL.getLeft() >= 0 && evaledL.getRight() >= 0 && evaledR.getLeft() >= 0 && evaledR.getRight() >= 0) {
+								RTLExpression rewrite = ExpressionFactory.createLessThan(op.getOperands()[0], op.getOperands()[1]);
+								return restrictAssume(post, rewrite, negated);
+							//}
+							//break;
+                        }
+					}
+				}
+				logger.info("no case for assumption: " + assumption);
+				return post;
+			}
+
 			@Override
 			public AbstractState visit(RTLAssume stmt) {
 				
 				ValuationState post = new ValuationState(iState);
 				
 				RTLExpression assumption = stmt.getAssumption();
-				
-				// TODO: implement assume
-				
-				if (assumption instanceof RTLOperation) {
-					RTLOperation op = (RTLOperation)assumption;
-					switch (op.getOperator()) {
-					case UNSIGNED_LESS_OR_EQUAL:
-						RTLExpression lhs = op.getOperands()[0];
-						RTLExpression rhs = op.getOperands()[1];
-						IntervalElement evaledLhs = (IntervalElement)iState.abstractEval(lhs);
-						IntervalElement evaledRhs = (IntervalElement)iState.abstractEval(rhs);
-
-						if (evaledRhs.getLeft() >= 0) {
-							IntervalElement uLessInt = new IntervalElement(
-									evaledRhs.getRegion(), 0, 
-									evaledRhs.getRight(), 1, evaledLhs.getBitWidth()
-							);
-							// TODO: Implement meet for interval elements for optimal result
-							// uLessInt = uLessInt.meet(evaledLhs);
-							// if uLessInt.isBot() return Collections.emptySet();
-							// cheap but sound solution for now: only use new interval if it has less elements
-							if (uLessInt.size() < evaledLhs.size()) {
-								if (lhs instanceof RTLVariable) {
-									post.setVariableValue((RTLVariable)lhs, uLessInt);
-								} else if (lhs instanceof RTLMemoryLocation) {
-									RTLMemoryLocation m = (RTLMemoryLocation)lhs;
-									AbstractDomainElement evaledAddress = iState.abstractEval(m.getAddress());
-									post.setMemoryValue(evaledAddress, m.getBitWidth(), uLessInt);
-								}
-							}
-						}
-						break;
-					}
-				}
-
-				return post;
+				return restrictAssume(post, assumption, false);
 			}
 
 			@Override
