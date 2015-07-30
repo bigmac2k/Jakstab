@@ -190,7 +190,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@Override
 	public Set<RTLNumber> concretize() {
 		// magic max size for jump tables
-		if (getRegion() != MemoryRegion.GLOBAL || size() > MAX_CONCRETIZATION_SIZE) {
+		if (getRegion() != MemoryRegion.GLOBAL || size() > MAX_CONCRETIZATION_SIZE || isTop()) {
 			return RTLNumber.ALL_NUMBERS;
 		}
 		Set<RTLNumber> result = new FastSet<RTLNumber>();
