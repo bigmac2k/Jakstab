@@ -301,8 +301,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	 */
 	@Override
 	public String toString() {
-		if (isTop()) return Characters.TOP;
-		if (isBot()) return Characters.BOT;
+		if (isTop()) return Characters.TOP + bitWidth;
+		if (isBot()) return Characters.BOT + bitWidth;
 		StringBuilder s = new StringBuilder();
 		if (region != MemoryRegion.GLOBAL) 
 			s.append(region).append(":");
@@ -310,7 +310,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		s.append(stride);
 		s.append('[');
 
-		if (leftOpen()) { 
+		if (leftOpen() && size() != 1) {
 			s.append(Characters.TOP); 
 		} else {
 			s.append(left);
@@ -326,7 +326,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			}
 			s.append(']');
 		}
-		return s.toString(); 
+		s.append(bitWidth);
+		return s.toString();
 	}
 
 	/*
