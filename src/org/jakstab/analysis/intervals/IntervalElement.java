@@ -625,6 +625,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		System.out.println("Computing AND");
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
 		MemoryRegion newRegion = region.join(other.region);
 		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
 
@@ -638,6 +639,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public IntervalElement or(AbstractDomainElement op) {
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
 		MemoryRegion newRegion = region.join(other.region);
 		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
 
@@ -651,6 +653,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public IntervalElement xOr(AbstractDomainElement op) {
 		IntervalElement other = (IntervalElement) op;
 		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
 		MemoryRegion newRegion = region.join(other.region);
 		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
 
@@ -663,6 +666,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@Override
 	public IntervalElement bitNegate() {
 		Interval res = BitwiseOperations.BIT_NEGATE(left, right);
+		if(isBot()) return getBot(bitWidth);
 		//may keep stride
 		return new IntervalElement(region, res.l(), res.g(), 1, bitWidth);
 	}
