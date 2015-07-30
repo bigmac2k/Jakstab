@@ -274,19 +274,19 @@ public class RTLNumber extends AbstractRTLExpression implements RTLExpression, A
 	}
 
 	@Override
-	public AbstractDomainElement or(AbstractDomainElement op) {
+	public RTLNumber or(AbstractDomainElement op) {
 		RTLNumber other = (RTLNumber) op;
 		return ExpressionFactory.createNumber(value | other.value, Math.max(bitWidth, other.bitWidth));
 	}
 
 	@Override
-	public AbstractDomainElement xOr(AbstractDomainElement op) {
+	public RTLNumber xOr(AbstractDomainElement op) {
 		RTLNumber other = (RTLNumber) op;
 		return ExpressionFactory.createNumber(value ^ other.value, Math.max(bitWidth, other.bitWidth));
 	}
 
 	@Override
-	public AbstractDomainElement bitNegate() {
+	public RTLNumber bitNegate() {
 		return ExpressionFactory.createNumber(~value, bitWidth);
 	}
 }
