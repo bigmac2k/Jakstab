@@ -1,6 +1,6 @@
 /*
  * CompositeProgramAnalysis.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -152,8 +152,10 @@ public class CompositeProgramAnalysis implements ConfigurableProgramAnalysis {
 		// If expression substitution is active, substitute expression in CFA edge passed to post methods
 		CFAEdge origCFAEdge = cfaEdge;
 		if (expressionSubstitutionIndex >= 0) {
-			cfaEdge = new CFAEdge(cfaEdge.getSource(), cfaEdge.getTarget(), ExpressionSubstitution.substituteStatement(
-					((RTLStatement)cfaEdge.getTransformer()), (SubstitutionState)c.getComponent(expressionSubstitutionIndex)));
+			RTLStatement subst = ExpressionSubstitution.substituteStatement(
+					((RTLStatement)cfaEdge.getTransformer()), (SubstitutionState)c.getComponent(expressionSubstitutionIndex));
+			System.out.println("about to call CFAEdge with " + subst);
+			cfaEdge = new CFAEdge(cfaEdge.getSource(), cfaEdge.getTarget(), subst);
 		}
 		
 		// Check for requests for debug messages. Currently only used for dumping

@@ -24,7 +24,10 @@ import org.jakstab.analysis.substitution.SubstitutionElement;
 import org.jakstab.analysis.substitution.SubstitutionState;
 import org.jakstab.cfa.CFAEdge;
 import org.jakstab.rtl.Context;
+import org.jakstab.rtl.expressions.ExpressionSimplifier;
+import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
+import org.jakstab.rtl.statements.RTLAssume;
 import org.jakstab.rtl.statements.RTLSkip;
 import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.util.Logger;
@@ -55,7 +58,9 @@ public class ExpressionSubstitution implements CFATransformation {
 	
 	public static RTLStatement substituteStatement(RTLStatement stmt, SubstitutionState s) {
 		Context substCtx = new Context();
+		ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
 		logger.debug("substituting in: " + stmt + " at " + stmt.getLabel() + " state: " + s);
+		logger.debug("substitution state: " + s);
 		for (RTLVariable v : stmt.getUsedVariables()) {
 			SubstitutionElement el = s.getValue(v);
 			logger.debug("substitution value: " + v + " isTop? " + el.isTop());
@@ -65,16 +70,32 @@ public class ExpressionSubstitution implements CFATransformation {
 		}
 		if (!substCtx.getAssignments().isEmpty()) {
 			logger.debug("Old stmt: " + stmt);
+			logger.debug("Substitution Context: " + substCtx);
 			RTLStatement newStmt = stmt.copy().evaluate(substCtx);
 			logger.debug("New stmt: " + newStmt);
+			//if substitution not empty, try to reduce once more (Empty context)
 			if (newStmt != null) {
-				return newStmt.evaluate(new Context());
-			} else {
-				RTLSkip skip = new RTLSkip();
-				skip.setLabel(stmt.getLabel());
-				skip.setNextLabel(stmt.getNextLabel());
-				return skip;
+				RTLStatement reduced = newStmt.evaluate(new Context());
+				//if reduction is not empty, return it. Otherwise return skip
+				if (reduced != null) {
+					if(reduced instanceof RTLAssume) {
+						//execute simplification on assumption
+						RTLAssume assumption = (RTLAssume) reduced;
+						logger.debug("handing assumption of to simplifier: " + assumption);
+						RTLExpression newExpr = simplifier.simplify(assumption.getAssumption());
+						RTLAssume newAssumption = new RTLAssume(newExpr, assumption.getSource());
+						newAssumption.setLabel(assumption.getLabel());
+						newAssumption.setNextLabel(assumption.getNextLabel());
+						logger.debug("result of simplifier: " + newAssumption);
+						return newAssumption;
+					}
+					return reduced;
+				}
 			}
+			RTLSkip skip = new RTLSkip();
+			skip.setLabel(stmt.getLabel());
+			skip.setNextLabel(stmt.getNextLabel());
+			return skip;
 		}
 		return stmt;
 	}
