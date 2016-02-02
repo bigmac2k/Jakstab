@@ -87,6 +87,20 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 			return valueFactory.createTop(var.getBitWidth());
 		}
 	}
+
+	private void clearCovering(RTLVariable var) {
+		for (RTLVariable covering : ExpressionFactory.coveringRegisters(var)) {
+			aVarVal.remove(covering);
+			//clearCovering(covering);
+		}
+	}
+	
+	private void clearCovered(RTLVariable var) {
+		for (RTLVariable covered : ExpressionFactory.coveredRegisters(var)) {
+			aVarVal.remove(covered);
+			//clearCovered(covered);
+		}
+	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
