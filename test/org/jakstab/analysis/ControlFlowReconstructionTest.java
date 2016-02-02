@@ -1,6 +1,6 @@
 /*
  * ControlFlowReconstructionTest.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -36,10 +36,9 @@ import org.junit.Test;
  */
 public class ControlFlowReconstructionTest {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(ControlFlowReconstructionTest.class);
 
-	private static Architecture arch;
+	private Architecture arch;
 
 	/**
 	 * @throws java.lang.Exception
@@ -75,8 +74,8 @@ public class ControlFlowReconstructionTest {
 		cfr.run();
 
 		assertEquals(numInstructions, program.getAssemblyMap().size());
-		assertEquals(numStatements, program.getStatements().size());
-		assertTrue("Not enough edges!", numEdges <= program.getCFA().size());
+		assertEquals(numStatements, program.getStatementCount());
+		assertTrue("Not enough edges!", numEdges <= program.getCFG().numEdges());
 		if (checkCompleteness) 
 			assertTrue("Analysis timed out when it should not!", cfr.isCompleted());
 	}

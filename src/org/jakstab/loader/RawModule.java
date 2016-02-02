@@ -1,6 +1,6 @@
 /*
  * RawModule.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -38,7 +38,6 @@ import org.jakstab.util.Logger;
  */
 public class RawModule implements ExecutableImage {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(RawModule.class);
 	
 	private final BinaryFileInputBuffer inBuf;
@@ -87,7 +86,7 @@ public class RawModule implements ExecutableImage {
 
 	@Override
 	public SymbolFinder getSymbolFinder() {
-		return new DummySymbolFinder();
+		return DummySymbolFinder.getInstance();
 	}
 
 	@Override
@@ -124,6 +123,11 @@ public class RawModule implements ExecutableImage {
 	@Override
 	public byte[] getByteArray() {
 		return inBuf.getByteArray();
+	}
+
+	@Override
+	public boolean isImportArea(AbsoluteAddress va) {
+		return false;
 	}
 
 }

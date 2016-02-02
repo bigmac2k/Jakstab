@@ -1,6 +1,6 @@
 /*
  * AbstractCOFFModule.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -38,7 +38,6 @@ import org.jakstab.util.Logger;
  */
 public abstract class AbstractCOFFModule implements ExecutableImage {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(AbstractCOFFModule.class);
 	
 	protected BinaryFileInputBuffer inBuf;
@@ -248,5 +247,15 @@ public abstract class AbstractCOFFModule implements ExecutableImage {
 			disassembler = new X86Disassembler(inBuf);
 		}
 		return disassembler;
+	}
+
+	@Override
+	public boolean isImportArea(AbsoluteAddress va) {
+		int section = getSectionNumber(va);
+		if (section < 0) return false;
+		else {
+			// FIXME: Implement this
+			return false;
+		}
 	}
 }

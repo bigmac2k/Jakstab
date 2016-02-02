@@ -1,6 +1,6 @@
 /*
  * CFATransformerFactory.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -19,12 +19,8 @@ package org.jakstab.cfa;
 
 import java.util.Set;
 
-import org.jakstab.Program;
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.util.Logger;
-
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.SetMultimap;
 
 /**
  * Trivial implementation that provides CFA edges from an already reconstructed
@@ -37,26 +33,20 @@ public class CFATransformerFactory implements StateTransformerFactory {
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(CFATransformerFactory.class);
 	
-	private SetMultimap<Location,CFAEdge> cfa;
+	private ControlFlowGraph cfg;
 	
-	public CFATransformerFactory(Set<CFAEdge> cfa) {
-		this.cfa = HashMultimap.create();
-		for (CFAEdge e : cfa) {
-			this.cfa.put(e.getSource(), e);
-		}
+	public CFATransformerFactory(ControlFlowGraph cfg) {
+		this.cfg = cfg;
 	}
 
-	/*
-	 * @see org.jakstab.analysis.StateTransformerFactory#getTransformers(org.jakstab.analysis.AbstractState)
-	 */
 	@Override
 	public Set<CFAEdge> getTransformers(AbstractState a) {
-		Set<CFAEdge> cfaEdges = cfa.get(a.getLocation());
+		Set<CFAEdge> cfaEdges = cfg.getOutEdges(a.getLocation());
 		return cfaEdges;
 	}
 
 	@Override
 	public Location getInitialLocation() {
-		return Program.getProgram().getStart();
+		return cfg.getEntryPoint();
 	}
 }

@@ -1,6 +1,6 @@
 /*
  * NumberValuation.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -24,6 +24,7 @@ import org.jakstab.Program;
 import org.jakstab.analysis.*;
 import org.jakstab.asm.AbsoluteAddress;
 import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.cfa.StateTransformer;
 import org.jakstab.loader.ExecutableImage;
 import org.jakstab.rtl.*;
@@ -338,7 +339,7 @@ public final class NumberValuation implements AbstractState {
 			setValue((RTLMemoryLocation)w, v);
 	}
 	
-	public Location getProgramCounter() {
+	public RTLLabel getProgramCounter() {
 		return null;
 	}
 
@@ -492,7 +493,7 @@ public final class NumberValuation implements AbstractState {
 		}
 		return true;
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof NumberValuation)) return false;
@@ -503,6 +504,18 @@ public final class NumberValuation implements AbstractState {
 		if (isTop()) return false;
 		
 		return dataIsTop == other.dataIsTop && aVarVal.equals(other.aVarVal) && aMemVal.equals(other.aMemVal);
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		if (isTop())
+			return 3;
+		int result = 1;
+		result = prime * result + ((aMemVal == null) ? 0 : aMemVal.hashCode());
+		result = prime * result + ((aVarVal == null) ? 0 : aVarVal.hashCode());
+		result = prime * result + (dataIsTop ? 1231 : 1237);
+		return result;
 	}
 
 	@Override

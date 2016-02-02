@@ -1,6 +1,6 @@
 /*
  * ExpressionFactory.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -130,10 +130,14 @@ public final class ExpressionFactory {
 		}
 		return new RTLNumber(value, bitWidth);
 	}
+	
+	public static RTLNumber createNumber(AbsoluteAddress addr) {
+		return new RTLNumber(addr.getValue(), addr.getBitWidth());
+	}
 
 	/**
 	 * Generic creation method that calls more specific methods depending on the
-	 * type of the assembly operand passed as paramater.
+	 * type of the assembly operand passed as parameter.
 	 * 
 	 * @param iOp an operand of an assembly instruction 
 	 * @return a translation of the operand into an RTLExpression 
@@ -159,6 +163,10 @@ public final class ExpressionFactory {
 	
 	public static RTLExpression createPlus(RTLExpression... operands) {
 		return createOperation(Operator.PLUS, operands);
+	}
+	
+	public static RTLExpression createPlus(RTLExpression op1, long op2) {
+		return createPlus(op1, createNumber(op2, op1.getBitWidth()));
 	}
 
 	public static RTLExpression createMinus(RTLExpression op1, RTLExpression op2) {
@@ -343,6 +351,7 @@ public final class ExpressionFactory {
 				}
 			}
 			break;
+		default: // nothing
 		}
 		return new RTLOperation(operator, operands);
 	}

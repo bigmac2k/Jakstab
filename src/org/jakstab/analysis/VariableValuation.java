@@ -1,6 +1,6 @@
 /*
  * VariableValuation.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -88,23 +88,22 @@ public class VariableValuation<A extends AbstractValue> implements LatticeElemen
 		}
 	}
 	
-	protected void clearCovering(RTLVariable var) {
+	private void clearCovering(RTLVariable var) {
 		for (RTLVariable covering : ExpressionFactory.coveringRegisters(var)) {
 			aVarVal.remove(covering);
 			//clearCovering(covering);
 		}
 	}
 	
-	protected void clearCovered(RTLVariable var) {
+	private void clearCovered(RTLVariable var) {
 		for (RTLVariable covered : ExpressionFactory.coveredRegisters(var)) {
 			aVarVal.remove(covered);
 			//clearCovered(covered);
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void set(RTLVariable var, A value) {
-		logger.debug("setting var: " + var + " to value: " + value);
+		
 		RTLBitRange asParent = ExpressionFactory.getRegisterAsParent(var);
 
 		// Set parent register - we only do this if the value to set represents 
@@ -141,7 +140,6 @@ public class VariableValuation<A extends AbstractValue> implements LatticeElemen
 		if (value.isTop()) {
 			aVarVal.remove(var);
 		} else {
-			logger.debug("putting var: " + var + " to value: " + value);
 			aVarVal.put(var, value);
 		}
 	}

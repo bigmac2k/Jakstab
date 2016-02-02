@@ -1,6 +1,6 @@
 /*
  * ReachedSet.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,6 +22,7 @@ import java.util.*;
 import org.jakstab.analysis.composite.CompositeState;
 import org.jakstab.analysis.location.LocationState;
 import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.util.Logger;
 
 import com.google.common.collect.HashMultimap;
@@ -35,7 +36,6 @@ import com.google.common.collect.SetMultimap;
  */
 public class ReachedSet extends AbstractSet<AbstractState> implements Collection<AbstractState> {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(ReachedSet.class);
 	
 	private final SetMultimap<AbstractState, CompositeState> compositeMap;
@@ -138,7 +138,7 @@ public class ReachedSet extends AbstractSet<AbstractState> implements Collection
 		}
 	}
 	
-	public void logStates(Location loc) {
+	public void logStates(RTLLabel loc) {
 		for (CompositeState c : compositeMap.get(new LocationState(loc))) {
 			logger.fatal(c);
 		}

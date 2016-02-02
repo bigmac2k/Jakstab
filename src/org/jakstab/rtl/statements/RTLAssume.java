@@ -1,6 +1,6 @@
 /*
  * RTLAssume.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -89,6 +89,18 @@ public class RTLAssume extends AbstractRTLStatement implements RTLStatement {
 	
 	public RTLGoto getSource() {
 		return source;
+	}
+	
+	public boolean isCall() {
+		if (source == null)
+			return false;
+		return RTLGoto.Type.CALL.equals(source.getType());
+	}
+
+	public boolean isReturn() {
+		if (source == null)
+			return false;
+		return RTLGoto.Type.RETURN.equals(source.getType());
 	}
 
 	@Override

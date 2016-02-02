@@ -1,6 +1,6 @@
 /*
  * Logger.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -65,8 +65,8 @@ public class Logger {
 	}
 
 	public void log(Level level) {
-		if (level.ordinal() >= getDebugLevel())
-			out.println();
+		if (level.ordinal() <= getDebugLevel())
+			out.println(globalPrefix + prefix);
 	}
 
 	public void log(Level level, Object message) {

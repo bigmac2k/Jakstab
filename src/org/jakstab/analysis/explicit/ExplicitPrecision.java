@@ -1,6 +1,6 @@
 /*
  * ExplicitPrecision.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -30,11 +30,14 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 
 /**
+ * For each variable and memory location, stores the precision (none, region, full) 
+ * with which it is tracked. Can also hold individual thresholds for some variables 
+ * that override the default value bound.   
+ * 
  * @author Johannes Kinder
  */
 public class ExplicitPrecision implements Precision {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(ExplicitPrecision.class);
 	
 	public enum TrackingLevel { NONE, REGION, FULL }

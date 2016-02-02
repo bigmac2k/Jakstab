@@ -1,6 +1,6 @@
 /*
  * HeuristicHarness.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -24,7 +24,7 @@ import java.util.List;
 import org.jakstab.Program;
 import org.jakstab.asm.AbsoluteAddress;
 import org.jakstab.loader.pe.AbstractCOFFModule;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
@@ -33,7 +33,6 @@ import org.jakstab.util.Logger;
 
 public class HeuristicHarness implements Harness {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(HeuristicHarness.class);
 	
 	private static int CALL_INSTR_DISTANCE = 1;
@@ -45,12 +44,7 @@ public class HeuristicHarness implements Harness {
 		{ 0x55, -0x75, -0x14 }
 	};
 	
-	private long PROLOGUE_BASE = 0xface0000L;
-	private long EPILOGUE_BASE = 0xfee70000L;
-	private AbsoluteAddress prologueAddress = new AbsoluteAddress(PROLOGUE_BASE);
-	private AbsoluteAddress epilogueAddress = new AbsoluteAddress(EPILOGUE_BASE);
 	private AbsoluteAddress lastAddress;
-
 
 	private RTLVariable esp = Program.getProgram().getArchitecture().stackPointer();
 	
@@ -138,7 +132,7 @@ public class HeuristicHarness implements Harness {
 		int rtlId = 0;
 		for (RTLStatement stmt : seq) {
 			stmt.setLabel(address, rtlId++);
-			stmt.setNextLabel(new Location(address, rtlId));
+			stmt.setNextLabel(new RTLLabel(address, rtlId));
 		}
 		seq.getLast().setNextLabel(null);
 

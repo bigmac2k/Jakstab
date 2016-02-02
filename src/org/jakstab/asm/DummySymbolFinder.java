@@ -25,7 +25,7 @@
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.asm;
@@ -37,6 +37,8 @@ public class DummySymbolFinder implements SymbolFinder {
 	public static SymbolFinder getInstance() {
 		return INSTANCE;
 	}
+	
+	private DummySymbolFinder() {}
 
 	public String getSymbolFor(long address) {
 		return "0x" + Long.toHexString(address);
@@ -48,5 +50,9 @@ public class DummySymbolFinder implements SymbolFinder {
 
 	public boolean hasSymbolFor(AbsoluteAddress va) {
 		return false;
+	}
+
+	public AbsoluteAddress getAddressFor(String symbol) {
+		return null;
 	}
 }

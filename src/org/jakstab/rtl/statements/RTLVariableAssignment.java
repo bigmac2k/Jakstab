@@ -1,6 +1,6 @@
 /*
  * RTLVariableAssignment.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -38,6 +38,11 @@ public class RTLVariableAssignment extends AbstractRTLStatement implements RTLSt
 
 	private RTLVariable leftHandSide;
 	private RTLExpression rightHandSide;
+	
+	public RTLVariableAssignment(RTLVariable lhs, RTLExpression rhs) {
+		this(lhs.getBitWidth(), lhs, rhs);
+		assert(lhs.getBitWidth() > 0);
+	}
 
 	public RTLVariableAssignment(int bitWidth, RTLVariable leftHandSide, RTLExpression rightHandSide) {
 		super();
@@ -50,14 +55,17 @@ public class RTLVariableAssignment extends AbstractRTLStatement implements RTLSt
 		invalidateCache();
 		RTLExpression evaldRHS = this.rightHandSide.evaluate(context);
 
-		if (evaldRHS == null) logger.warn("No more RHS after evaluation of " + this.toString());
-		
-		ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
-		evaldRHS = simplifier.simplify(evaldRHS);
+		if (evaldRHS == null) {
+			logger.warn("No more RHS after evaluation of " + this.toString());
+		} else {		
+			ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
+			evaldRHS = simplifier.simplify(evaldRHS);
+		}
 
-		// remove all killed assignments from the context
-		context.removeAssignment(leftHandSide.getDefinedVariablesOnWrite());
+		// remove killed assignment from the context
+		context.removeAssignment(leftHandSide);
 
+		// perform substitution, if any
 		RTLExpression evaldLHS = this.leftHandSide.evaluate(context);
 
 		if (evaldLHS.equals(evaldRHS)) {

@@ -1,6 +1,6 @@
 /*
  * ForwardExpressionSubstitution.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.Set;
 
 import org.jakstab.AnalysisProperties;
-import org.jakstab.JOption;
 import org.jakstab.analysis.*;
 import org.jakstab.cfa.CFAEdge;
 import org.jakstab.cfa.Location;
@@ -42,9 +41,6 @@ public class ExpressionSubstitutionAnalysis implements ConfigurableProgramAnalys
 		p.setExplicit(true);
 	}
 
-	public static JOption<Boolean> unevaledFlags =
-			JOption.create("unevaled-flags", "Tracks non-evaluated flags");
-	
 	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(ExpressionSubstitutionAnalysis.class);
 	
@@ -78,7 +74,7 @@ public class ExpressionSubstitutionAnalysis implements ConfigurableProgramAnalys
 	}
 
 	@Override
-	public AbstractState initStartState(Location label) {
+	public AbstractState initStartState(Location location) {
 		return SubstitutionState.TOP;
 	}
 

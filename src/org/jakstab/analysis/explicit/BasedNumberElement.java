@@ -1,6 +1,6 @@
 /*
  * BasedNumberElement.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -35,7 +35,6 @@ import org.jakstab.util.Logger;
  */
 public class BasedNumberElement implements AbstractDomainElement, BitVectorType {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(BasedNumberElement.class);
 	
 	private static BasedNumberElement[] TOPS = new BasedNumberElement[128];
@@ -72,6 +71,11 @@ public class BasedNumberElement implements AbstractDomainElement, BitVectorType 
 		this(MemoryRegion.GLOBAL, new NumberElement(v));
 	}
 	
+	/**
+	 * Checks whether the offset part of this based value is TOP. The caller has
+	 * to make sure that the region is valid (not TOP).
+	 * @return
+	 */
 	public boolean isNumberTop() {
 		assert (!isTop()) : "TOP BasedNumberElement has no number!";
 		return value.isTop();
@@ -83,8 +87,12 @@ public class BasedNumberElement implements AbstractDomainElement, BitVectorType 
 
 	@Override
 	public Set<RTLNumber> concretize() {
-		// Just pass down to number elements - value in TOPs are 
+		// Just pass down to number elements - value in (TOP,TOPs) are 
 		// corresponding NumerElement TOPs
+		if (!isUnbased() && !isTop()) {
+			// Make sure to concretize regioned values to all numbers
+			return getTop(getBitWidth()).concretize();
+		}
 		return value.concretize();
 	}
 
@@ -153,6 +161,8 @@ public class BasedNumberElement implements AbstractDomainElement, BitVectorType 
 
 	@Override
 	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
 		BasedNumberElement other = (BasedNumberElement) obj;
 		return region.equals(other.region) && value.equals(other.value);
 	}

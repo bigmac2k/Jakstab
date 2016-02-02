@@ -1,6 +1,6 @@
 /*
  * PESymbolFinder.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -34,6 +34,7 @@ public class PESymbolFinder implements SymbolFinder {
 	
 	private PEModule module;
 	private Map<AbsoluteAddress,String> symbols;
+	Map<String, AbsoluteAddress> addresses;
 	
 	/**
 	 * @param module
@@ -49,6 +50,11 @@ public class PESymbolFinder implements SymbolFinder {
 		for (ExportedSymbol exSym : module.getExportedSymbols()) {
 			symbols.put(exSym.getAddress(), exSym.getName());
 		}
+
+		addresses = new HashMap<String, AbsoluteAddress>();
+
+		for (Map.Entry<AbsoluteAddress, String> e : symbols.entrySet())
+			addresses.put(e.getValue(), e.getKey());
 	}
 
 	@Override
@@ -66,5 +72,10 @@ public class PESymbolFinder implements SymbolFinder {
 	@Override
 	public boolean hasSymbolFor(AbsoluteAddress va) {
 		return symbols.containsKey(va);
+	}
+
+	@Override
+	public AbsoluteAddress getAddressFor(String symbol) {
+		return addresses.get(symbol);
 	}
 }

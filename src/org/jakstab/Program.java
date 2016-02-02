@@ -1,6 +1,6 @@
 /*
  * Program.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -25,13 +25,16 @@ import java.util.*;
 import org.jakstab.util.Logger;
 import org.jakstab.asm.*;
 import org.jakstab.cfa.CFAEdge;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.ControlFlowGraph;
+import org.jakstab.cfa.FineGrainedCFG;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.disasm.DisassemblyException;
 import org.jakstab.loader.*;
 import org.jakstab.loader.elf.ELFModule;
 import org.jakstab.loader.pe.*;
 import org.jakstab.rtl.expressions.SetOfVariables;
 import org.jakstab.rtl.statements.RTLHalt;
+import org.jakstab.rtl.statements.RTLSkip;
 import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.rtl.statements.StatementSequence;
 import org.jakstab.ssl.Architecture;
@@ -46,8 +49,7 @@ import org.jakstab.util.FastSet;
  * @author Johannes Kinder
  */
 public final class Program {
-
-	@SuppressWarnings("unused")
+	
 	private final static Logger logger = Logger.getLogger(Program.class);
 	private static Program programInstance;
 
@@ -59,7 +61,7 @@ public final class Program {
 	public static Program getProgram() {
 		return programInstance;
 	}
-
+	
 	/**
 	 * Initially creates the Program object.
 	 *  
@@ -73,35 +75,34 @@ public final class Program {
 	}
 
 	private final Architecture arch;
-	private Location start;
-	private Map<Location, RTLStatement> statementMap;
+	private RTLLabel start;
+	private Map<RTLLabel, RTLStatement> statementMap;
 	private Map<AbsoluteAddress, Instruction> assemblyMap;
 	private ExecutableImage mainModule;
 	private List<ExecutableImage> modules;
-	private Set<CFAEdge> cfa;
+	private ControlFlowGraph cfg;
 	private final Map<String, ExportedSymbol> exportedSymbols;
 	private final Set<UnresolvedSymbol> unresolvedSymbols;
-	private Set<Location> unresolvedBranches;
+	private Set<RTLLabel> unresolvedBranches;
 	private StubProvider stubLibrary;
 	private Harness harness;
-
+	
 	public enum TargetOS {WINDOWS, LINUX, UNKNOWN};
 	private TargetOS targetOS;
-
+	
 	private Program(Architecture arch) {
 		this.arch = arch;
 		this.targetOS = TargetOS.UNKNOWN;
 
 		modules = new LinkedList<ExecutableImage>();
 		assemblyMap = new TreeMap<AbsoluteAddress, Instruction>();
-		statementMap = new HashMap<Location, RTLStatement>(2000);
-		cfa = new FastSet<CFAEdge>();
+		statementMap = new HashMap<RTLLabel, RTLStatement>(2000);
 		exportedSymbols = new HashMap<String, ExportedSymbol>();
 		unresolvedSymbols = new FastSet<UnresolvedSymbol>();
-
-		unresolvedBranches = new FastSet<Location>();
+		
+		unresolvedBranches = new FastSet<RTLLabel>();
 	}
-
+	
 	/**
 	 * Loads the module containing the main function. This function should be called last
 	 * for correct symbol resolution.
@@ -118,7 +119,7 @@ public final class Program {
 		installStubs();
 		return module;
 	}
-
+	
 	/**
 	 * Loads a secondary (library or stub) module for analysis. Automatically determines 
 	 * the correct file type.
@@ -148,15 +149,15 @@ public final class Program {
 				}
 			}
 		}
-
+		
 		for (ExecutableImage existingModule : modules) {
 			if (existingModule.getMaxAddress().getValue() >= module.getMinAddress().getValue() &&
 					existingModule.getMinAddress().getValue() <= module.getMaxAddress().getValue()) {
 				throw new RuntimeException("Virtual addresses of modules overlap!");
 			}
 		}
-
-
+		
+		
 		modules.add(module);
 		unresolvedSymbols.addAll(module.getUnresolvedSymbols());
 		for (ExportedSymbol symbol : module.getExportedSymbols()) {
@@ -165,7 +166,7 @@ public final class Program {
 		resolveSymbols();
 		return module;
 	}
-
+	
 	private String removeDecoration(String s) {
 		if (s.charAt(0) == '@' || s.charAt(0) == '_')
 			s = s.substring(1);
@@ -174,7 +175,7 @@ public final class Program {
 			s = s.substring(0, i); 
 		return s;
 	}
-
+	
 	/**
 	 * Resolves symbols between the loaded modules. 
 	 */
@@ -183,7 +184,7 @@ public final class Program {
 		while (sIter.hasNext()) {
 			UnresolvedSymbol unresolvedSymbol = sIter.next();
 			ExportedSymbol symbol = exportedSymbols.get(removeDecoration(unresolvedSymbol.getName()));
-
+			
 			if (symbol != null) {
 				logger.debug("Resolving symbol " + unresolvedSymbol.getName());
 				unresolvedSymbol.resolve(symbol.getAddress());
@@ -191,7 +192,7 @@ public final class Program {
 			}
 		}
 	}
-
+	
 	/**
 	 * Returns the address of the given procedure within the given library. Procedures
 	 * present within the analyzed modules are given precedence over stub functions.
@@ -208,7 +209,20 @@ public final class Program {
 			return stubLibrary.resolveSymbol(library, procedure);
 		}
 	}
-
+	
+	public boolean isStub(AbsoluteAddress a) {
+		return a.getValue() >= StubProvider.STUB_BASE;
+	}
+	
+	public boolean isImport(AbsoluteAddress a) {
+		if (isStub(a))
+			return true;
+		ExecutableImage m = getModule(a);
+		if (m == null)
+			return false;
+		return m.isImportArea(a);
+	}
+	
 	/**
 	 * For all unresolved symbols, install simple stubs.
 	 */
@@ -218,7 +232,7 @@ public final class Program {
 		} else if (mainModule instanceof ELFModule){
 			stubLibrary = new LinuxStubLibrary(arch);
 		}
-
+		
 		Iterator<UnresolvedSymbol> sIter = unresolvedSymbols.iterator();
 		while (sIter.hasNext()) {
 			UnresolvedSymbol unresolvedSymbol = sIter.next();
@@ -229,11 +243,11 @@ public final class Program {
 				sIter.remove();
 			}
 		}
-
+		
 		if (!unresolvedSymbols.isEmpty()) 
 			logger.warn("Unresolved symbols remaining: " + unresolvedSymbols);
 	}
-
+	
 	/**
 	 * Install a harness that sets up the symbolic environment before calling main
 	 * and provides a return point with a termination statement.
@@ -244,12 +258,12 @@ public final class Program {
 		this.harness = harness;
 		harness.install(this);
 	}
-
+	
 	/**
 	 * Set the program entry point to the given label.
 	 * @param label the new entry point
 	 */
-	public void setStart(Location label) {
+	public void setStart(RTLLabel label) {
 		this.start = label;
 	}
 
@@ -258,9 +272,9 @@ public final class Program {
 	 * @param entryAddress the new entry address
 	 */
 	public void setEntryAddress(AbsoluteAddress entryAddress) {
-		setStart(new Location(entryAddress));
+		setStart(new RTLLabel(entryAddress));
 	}
-
+	
 	/**
 	 * Get the main module.  
 	 * @return the main module
@@ -268,7 +282,7 @@ public final class Program {
 	public ExecutableImage getMainModule() {
 		return mainModule;
 	}
-
+	
 	/**
 	 * Get the module that contains the specified virtual address at runtime.
 	 * @param a a virtual address
@@ -281,20 +295,11 @@ public final class Program {
 		}
 		return null;
 	}
-
+	
 	public Iterator<AbsoluteAddress> codeAddressIterator() {
 		return getMainModule().codeBytesIterator();
 	}
-
-	/**
-	 * Get all statements in the Program.
-	 * 
-	 * @return a collection of all statements in all loaded modules.
-	 */
-	public Collection<RTLStatement> getStatements() {
-		return statementMap.values();
-	}
-
+	
 	/**
 	 * Get the statement at a specific label. If there is no statement stored, attempts
 	 * to disassemble the instruction at the label's virtual address. If the address is
@@ -303,7 +308,7 @@ public final class Program {
 	 * @param label The label for which to get the statement
 	 * @return The statement object at label.
 	 */
-	public final RTLStatement getStatement(Location label) {
+	public final RTLStatement getStatement(RTLLabel label) {
 		if (!statementMap.containsKey(label)) {
 			AbsoluteAddress address = label.getAddress();
 			Instruction instr = getInstruction(address);
@@ -316,16 +321,25 @@ public final class Program {
 				if (Options.debug.getValue())
 					throw new DisassemblyException("Disassembly failed at " + address);
 			} else {
-				StatementSequence seq = arch.getRTLEquivalent(address, instr);
-				for (RTLStatement s : seq) {
-					putStatement(s);
+				try {
+					StatementSequence seq = arch.getRTLEquivalent(address, instr);
+					for (RTLStatement s : seq) {
+						putStatement(s);
+					}
+				} catch (Exception e) {
+					logger.error("Error during translation of instruction to IL");
+					e.printStackTrace();
+					RTLStatement skip = new RTLSkip();
+					skip.setLabel(label);
+					skip.setNextLabel(new RTLLabel(new AbsoluteAddress(address.getValue() + 1)));
+					putStatement(skip);
 				}
 				assert statementMap.containsKey(label) : "Disassembly did not produce label: " + label;
 			}
 		}
 		return statementMap.get(label);
 	}
-
+	
 	/**
 	 * Stores a statement in the program. If a statement already exists with the same
 	 * label, it is replaced.
@@ -340,8 +354,8 @@ public final class Program {
 		}
 		statementMap.put(stmt.getLabel(), stmt);
 	}
-
-	public boolean containsLabel(Location label) {
+	
+	public boolean containsLabel(RTLLabel label) {
 		return statementMap.containsKey(label);
 	}
 
@@ -352,11 +366,11 @@ public final class Program {
 	public final int getInstructionCount() {
 		return assemblyMap.size();
 	}
-
+	
 	public Harness getHarness() {
 		return harness;
 	}
-
+	
 	/**
 	 * Gets the assembly instruction at the specified virtual address.
 	 * @param address a virtual address
@@ -369,9 +383,9 @@ public final class Program {
 			return instr;
 		} else {
 			// No real instructions in prologue/epilogue
-			if (harness.contains(address) || address.getValue() >= StubProvider.STUB_BASE)
+			if (harness.contains(address) || isStub(address))
 				return null;
-
+			
 			ExecutableImage module = getModule(address);
 
 			long fp = -1;
@@ -412,7 +426,7 @@ public final class Program {
 		//logger.info(addr + " " + instr.toString(addr.getValue(), new DummySymbolFinder()));
 		return assemblyMap.put(addr, instr) == null;
 	}
-
+	
 	/**
 	 * Get the string representation of the assembly instruction at the given address.
 	 * @param addr a virtual address
@@ -423,8 +437,20 @@ public final class Program {
 		if (instr == null) return "NON_EXISTENT";
 		return instr.toString(addr.getValue(), symbolFinder(addr));
 	}
-
-	public String getSymbolFor(Location label) {
+	
+	/**
+	 * Get the string representation of the specified assembly instruction assuming
+	 * it is located at the given address.
+	 * @param addr a virtual address
+	 * @param instr an assembly instruction
+	 * @return a string representation of the assembly code at the given address
+	 */
+	public String getInstructionString(AbsoluteAddress addr, Instruction instr) {
+		if (instr == null) return "NON_EXISTENT";
+		return instr.toString(addr.getValue(), symbolFinder(addr));
+	}
+	
+	public String getSymbolFor(RTLLabel label) {
 		SymbolFinder symFinder = symbolFinder(label.getAddress());
 		if (symFinder.hasSymbolFor(label.getAddress())) {
 			return symFinder.getSymbolFor(label.getAddress());
@@ -432,24 +458,34 @@ public final class Program {
 			return label.toString();
 		}
 	}
-
+	
 	public String getSymbolFor(AbsoluteAddress addr) {
 		return symbolFinder(addr).getSymbolFor(addr);
 	}
-
-	private SymbolFinder symbolFinder(AbsoluteAddress addr) {
-		if (addr.getValue() >= StubProvider.STUB_BASE)
-			return stubLibrary.getSymbolFinder();
-
-		ExecutableImage module = getModule(addr);
-		return (module == null) ? new DummySymbolFinder() : module.getSymbolFinder();
+	
+	public AbsoluteAddress getAddressForSymbol(String symbol) {
+		for (ExecutableImage module : modules) {
+			AbsoluteAddress a = module.getSymbolFinder().getAddressFor(symbol);
+			if (a != null)
+				return a;
+		}
+		logger.error("Could not find address for symbol \"" + symbol + "\"");
+		return null;
 	}
-
-	public Set<Location> getUnresolvedBranches() {
+	
+	private SymbolFinder symbolFinder(AbsoluteAddress addr) {
+		if (isStub(addr))
+			return stubLibrary.getSymbolFinder();
+		
+		ExecutableImage module = getModule(addr);
+		return (module == null) ? DummySymbolFinder.getInstance() : module.getSymbolFinder();
+	}
+	
+	public Set<RTLLabel> getUnresolvedBranches() {
 		return unresolvedBranches;
 	}
 
-	public void setUnresolvedBranches(Set<Location> unresolvedBranches) {
+	public void setUnresolvedBranches(Set<RTLLabel> unresolvedBranches) {
 		this.unresolvedBranches = unresolvedBranches;
 	}
 
@@ -472,37 +508,37 @@ public final class Program {
 	 */
 	public SetOfVariables getUsedVariables() {
 		SetOfVariables result = new SetOfVariables();
-		for (CFAEdge edge : cfa)
+		for (CFAEdge edge : cfg.getEdges())
 			result.addAll(((RTLStatement)edge.getTransformer()).getUsedVariables());
 		return result;
 	}
 
-
+	
 	public Architecture getArchitecture() {
 		return arch;
 	}
-
+	
 	public Collection<ExportedSymbol> getSymbols() {
 		return exportedSymbols.values();
 	}
-
-	public Set<CFAEdge> getCFA() {
-		return Collections.unmodifiableSet(cfa);
+	
+	public ControlFlowGraph getCFG() {
+		return cfg;
 	}
 
 	public void setCFA(Set<CFAEdge> cfa) {
-		this.cfa = cfa;
+		cfg = new FineGrainedCFG(cfa);
 	}
 
-	public Location getStart() {
+	public RTLLabel getStart() {
 		return start;
 	}
-
+	
 	public int countIndirectBranches() {
 		int res = 0;
 		for (Map.Entry<AbsoluteAddress, Instruction> entry : assemblyMap.entrySet()) {
 			Instruction instr = entry.getValue();
-
+			
 			if (instr instanceof BranchInstruction) {
 				BranchInstruction branch = (BranchInstruction)instr;
 				if (branch.isIndirect()) {
@@ -524,15 +560,5 @@ public final class Program {
 			}
 		}
 		return res;
-	}
-
-	public AbsoluteAddress setEntrySymbol(String start) {
-		for(ExportedSymbol s : this.getSymbols()) {
-			if(s.getName().equalsIgnoreCase(start)) {
-				this.setEntryAddress(s.getAddress());
-				return s.getAddress();
-			}
-		}
-		return null;
 	}
 }

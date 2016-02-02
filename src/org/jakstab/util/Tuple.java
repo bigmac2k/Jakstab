@@ -1,6 +1,6 @@
 /*
  * Tuple.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -32,6 +32,7 @@ public class Tuple<T> implements Iterable<T> {
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(Tuple.class);
 	
+	@SafeVarargs
 	public static <T> Tuple<T> create(T... elements) {
 		Tuple<T> tuple = new Tuple<T>(elements.length);
 		tuple.array = elements;

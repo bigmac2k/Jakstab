@@ -1,6 +1,6 @@
 /*
  * StatsTracker.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -20,7 +20,6 @@ package org.jakstab;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jakstab.rtl.expressions.ExpressionSimplifier;
 import org.jakstab.util.Logger;
 
 /**

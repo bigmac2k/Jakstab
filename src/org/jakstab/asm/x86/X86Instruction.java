@@ -25,20 +25,21 @@
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.asm.x86;
 
 import org.jakstab.asm.*;
+import org.jakstab.rtl.Context;
 
 public class X86Instruction extends AbstractInstruction
-implements Instruction, X86Opcodes, MemoryInstruction {
+implements Instruction, X86Opcodes, MemoryInstruction, Cloneable {
 
 	final private int size;
 	final private int prefixes;
 	final private DataType dataType; //RTL dataType
-	final private Operand[] operands;
+	private Operand[] operands;
 	final private int operandCount;
 	private String description;
 
@@ -149,7 +150,7 @@ implements Instruction, X86Opcodes, MemoryInstruction {
 	public X86Instruction(String name, int size, int prefixes) {
 		this(name, (Operand)null, (Operand)null, (Operand)null, size, prefixes);
 	}
-
+	
 	protected String initDescription(long currentPc, SymbolFinder symFinder) {
 		StringBuffer buf = new StringBuffer();
 		buf.append(getPrefixString());
@@ -181,5 +182,30 @@ implements Instruction, X86Opcodes, MemoryInstruction {
 
 	protected static String comma = ", ";
 	protected static String spaces = "\t";
+
+	@Override
+	public Instruction evaluate(Context ctx) {
+		
+		boolean changed = false;
+		Operand[] evaledOperands = new Operand[operands.length];
+		for (int i = 0; i < getOperandCount(); i++) {
+			evaledOperands[i] = operands[i].evaluate(ctx);
+			changed |= evaledOperands[i] != operands[i];				
+		}
+		if (!changed) 
+			return this;
+		else {
+			X86Instruction inst = null;
+			try {
+				inst = (X86Instruction) super.clone();
+				inst.operands = new Operand[inst.operands.length];
+			} catch (CloneNotSupportedException e) {
+				throw new RuntimeException(e);
+			}
+			System.arraycopy(evaledOperands, 0, inst.operands, 0, inst.operands.length);
+			return inst;
+			//return new X86Instruction(name, evaledOperands[0], evaledOperands[1], evaledOperands[2], size, prefixes);
+		}
+	}
 
 }

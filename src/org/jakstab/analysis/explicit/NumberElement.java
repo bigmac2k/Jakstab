@@ -1,6 +1,6 @@
 /*
  * NumberElement.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -53,8 +53,8 @@ public class NumberElement implements AbstractValue, BitVectorType {
 	
 	public NumberElement(RTLNumber v) {
 		this.value = v;
+		assert value != null : "Null number passed into NumberElement constructor";
 		assert v.getBitWidth() > 0 : "Cannot create number element for " + v + " with unknown bitwidth!";
-		assert value != null;
 	}
 	
 	public RTLNumber getNumber() {

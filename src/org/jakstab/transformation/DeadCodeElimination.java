@@ -1,6 +1,6 @@
 /*
  * LiveVariableAnalysis.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -38,29 +38,35 @@ import com.google.common.collect.SetMultimap;
  */
 public class DeadCodeElimination implements CFATransformation {
 
-	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(DeadCodeElimination.class);
-
 
 	private Map<Location,SetOfVariables> liveVars;
 	private SetOfVariables liveInSinks;
+	private Set<CFAEdge> cfa;
 	private Program program;
-	@SuppressWarnings("unused")
-	private volatile boolean stop = false;
 	private long removalCount;
+	private boolean enableJumpThreading;
+	private volatile boolean stop = false;
+	private SetMultimap<Location, CFAEdge> inEdges;
+	private SetMultimap<Location, CFAEdge> outEdges;
 	
+	public Set<CFAEdge> getCFA() {
+		return cfa;
+	}
 	
 	public long getRemovalCount() {
 		return removalCount;
 	}
 
-	public DeadCodeElimination(Program program) {
+	public DeadCodeElimination(Set<CFAEdge> cfa, boolean enableJumpThreading) {
 		super();
-		this.program = program;
+		this.cfa = new HashSet<CFAEdge>(cfa);
+		this.program = Program.getProgram();
+		this.enableJumpThreading = enableJumpThreading;
 
-		liveVars = new TreeMap<Location, SetOfVariables>();
 		liveInSinks = new SetOfVariables();
 		liveInSinks.addAll(program.getArchitecture().getRegisters());
+		
 	}
 
 	private boolean isDeadEdge(CFAEdge edge) {
@@ -70,15 +76,35 @@ public class DeadCodeElimination implements CFATransformation {
 			RTLVariable lhs = a.getLeftHandSide();
 			if (!liveVars.get(edge.getTarget()).contains(lhs))
 				return true;
-		}
-		// Don't remove assumes, we need them for procedure detection!
-		/*else if (t instanceof RTLAssume) {
-			RTLAssume a = (RTLAssume)edge.getTransformer();
-			if (a.getAssumption().equals(factory.TRUE)) {
+		} else if (enableJumpThreading) {
+			// Don't remove assumes when doing procedure detection!
+			if (t instanceof RTLAssume) {
+				RTLAssume a = (RTLAssume)edge.getTransformer();
+				// Not needed if we remove every jump where we have just one out edge
+				//if (a.getAssumption().equals(ExpressionFactory.TRUE)) {
+				//	return true;
+				//}
+				// Remove jumps that have just one target
+				if (outEdges.get(edge.getSource()).size() == 1) {
+					switch (a.getSource().getType()) {
+					case CALL: case RETURN:
+						return false;
+					default:
+						// If this goes into or out of a stub, it's not a dead edge 
+						if (program.isStub(edge.getSource().getAddress()) ^ 
+								program.isStub(edge.getTarget().getAddress()))
+							return false;
+						if (program.getHarness().contains(edge.getSource().getAddress()) ^ 
+								program.getHarness().contains(edge.getTarget().getAddress())) {
+							return false;
+						}
+
+						return true;
+					}
+				}
+			} else if (t instanceof RTLSkip) {
 				return true;
 			}
-		} */else if (t instanceof RTLSkip) {
-			return true;
 		}
 		return false;
 	}
@@ -88,39 +114,46 @@ public class DeadCodeElimination implements CFATransformation {
 		logger.infoString("Eliminating dead code");
 		long startTime = System.currentTimeMillis();
 
-		FastSet<Location> worklist = new FastSet<Location>();
-
-		SetMultimap<Location, CFAEdge> inEdges = HashMultimap.create();
-		SetMultimap<Location, CFAEdge> outEdges = HashMultimap.create();
-
-		Set<CFAEdge> cfa = new TreeSet<CFAEdge>(program.getCFA()); 
-
-		for (CFAEdge e : cfa) {
-			inEdges.put(e.getTarget(), e);
-			outEdges.put(e.getSource(), e);
-		}
 
 		removalCount = 0;
 		long oldRemovalCount = 0;
 		int iterations = 0;
 		
+		// Outer fixpoint iteration for doing liveness + DCE as long as possible 
 		do {
 			logger.infoString(".");
+
+			// Reset and init liveness data
+			liveVars = new HashMap<Location, SetOfVariables>();
+			FastSet<Location> worklist = new FastSet<Location>();
+
+			// Reset and init in and out edge sets
+			inEdges = HashMultimap.create();
+			outEdges = HashMultimap.create();
+			for (CFAEdge e : cfa) {
+				inEdges.put(e.getTarget(), e);
+				outEdges.put(e.getSource(), e);
+			}
+
 			for (CFAEdge e : cfa) {
 				// Initialize all to bot / empty set
-				liveVars.put(e.getSource(), new SetOfVariables());
-				worklist.add(e.getSource());
+				if (!liveVars.containsKey(e.getSource())) {
+					liveVars.put(e.getSource(), new SetOfVariables());
+					// There might be infinite loops where no sink is reachable, so we 
+					// just add all nodes to the work list here as a poor man's solution
+					worklist.add(e.getSource());
+				}
 			}
 
 			for (Location l : inEdges.keySet()) {
 				if (outEdges.get(l).size() == 0) {
 					// Sinks havn't been initialized yet
-					worklist.add(l);
 					liveVars.put(l, new SetOfVariables(liveInSinks));
+					
+					// Initialize work list with sinks.
+					worklist.add(l);
 				}
 			}
-
-			
 			
 			oldRemovalCount = removalCount;
 			iterations++;
@@ -128,13 +161,14 @@ public class DeadCodeElimination implements CFATransformation {
 			while (!worklist.isEmpty() && !stop) {
 
 				Location node = worklist.pick();
+				SetOfVariables sLVout = liveVars.get(node);
 				
-				SetOfVariables newLive = null;
-				for (CFAEdge outEdge : outEdges.get(node)) {
-					RTLStatement stmt = (RTLStatement)outEdge.getTransformer();
-					SetOfVariables sLVin = new SetOfVariables(liveVars.get(outEdge.getTarget()));
+				for (CFAEdge inEdge : inEdges.get(node)) {
+					RTLStatement stmt = (RTLStatement)inEdge.getTransformer();
+					// start by copying LVout -> LVin
+					SetOfVariables sLVin = new SetOfVariables(sLVout);
 
-					// Fast remove with bitsets
+					//// Remove KILL(s) from sLVin
 					sLVin.removeAll(stmt.getDefinedVariables());
 					
 					// Remove also al for eax etc.
@@ -142,6 +176,7 @@ public class DeadCodeElimination implements CFATransformation {
 						sLVin.removeAll(ExpressionFactory.coveredRegisters(v));
 					}
 
+					//// Add GEN(s) to sLVin
 					sLVin.addAll(stmt.getUsedVariables());
 					
 					// Add also eax for al, etc.
@@ -150,22 +185,24 @@ public class DeadCodeElimination implements CFATransformation {
 					}
 					
 					// Registers might be used inside an unknown procedure call
-					if (outEdge.getTransformer() instanceof RTLUnknownProcedureCall) {
+					if (inEdge.getTransformer() instanceof RTLUnknownProcedureCall) {
 						sLVin.addAll(program.getArchitecture().getRegisters());
 					}
-					if (newLive == null) {
-						newLive = sLVin;
-					} else {
-						newLive.addAll(sLVin);
+					
+					SetOfVariables predLVOut = liveVars.get(inEdge.getSource());
+					if (predLVOut == null) {
+						logger.error("No LV out for inEdge " + inEdge + " for node " + node);
+						logger.error("In CFA: " + cfa.contains(inEdge));
+						logger.error("Containskey: " + liveVars.containsKey(inEdge.getSource()));
 					}
-				}
-				if (newLive == null) continue;
 
-				if (!newLive.equals(liveVars.get(node))) {
-					liveVars.put(node, newLive);
-					for (CFAEdge inEdge : inEdges.get(node)) {
+					SetOfVariables newPredLVout = new SetOfVariables(predLVOut);
+					newPredLVout.addAll(sLVin);
+					if (!newPredLVout.equals(predLVOut)) {
+						liveVars.put(inEdge.getSource(), newPredLVout);
 						worklist.add(inEdge.getSource());
 					}
+
 				}
 			}
 
@@ -174,8 +211,7 @@ public class DeadCodeElimination implements CFATransformation {
 				if (isDeadEdge(edge)) {
 					deadEdges.add(edge);
 				}
-			}
-			
+			}			
 			
 			// Delete the dead edges
 			for (CFAEdge deadEdge : deadEdges) {
@@ -192,9 +228,9 @@ public class DeadCodeElimination implements CFATransformation {
 						inEdges.put(inEdge.getTarget(), inEdge);
 						
 					}
-					if (deadEdge.getSource().equals(program.getStart())) {
-						program.setStart(deadEdge.getTarget());
-					}
+					/*if (deadEdge.getSource().equals(program.getStart())) {
+						program.setStart(deadEdge.getTarget().getLabel());
+					}*/
 					removalCount++;
 				}
 			}
@@ -207,7 +243,7 @@ public class DeadCodeElimination implements CFATransformation {
 		logger.verbose("Removed " + removalCount + " edges, finished after " + 
 				(endTime - startTime) + "ms and " + iterations + " iterations.");
 
-		program.setCFA(cfa);
+		//program.setCFA(cfa);
 	}
 	
 	public void stop() {

@@ -1,6 +1,6 @@
 /*
  * RTLOperation.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -324,10 +324,11 @@ public class RTLOperation extends AbstractRTLExpression implements RTLExpression
 						return ExpressionFactory.createOperation(Operator.OR, strippedSubOps);
 					else
 						return ExpressionFactory.createOperation(Operator.AND, strippedSubOps);
+				default: // nothing
 				}
 			}
 			break;
-			
+		default: // nothing	
 		}
 		
 		/////////////////////////
@@ -447,15 +448,26 @@ public class RTLOperation extends AbstractRTLExpression implements RTLExpression
 				case XOR:
 					result = op1 ^ op2;
 					break;
-				case ROL:
-					// XXX arne: is this ok?
-					result = (op1<<op2) | (op1 >> (this.getBitWidth() - op2));
-					logger.debug("Rotate left result: " + op1 + " ROL " + op2 + " = " + result);
+				case DIV:
+					// TODO: Check if this is correct
+					if (op2 != 0)
+						result = op1 / op2;
+					else
+						return ExpressionFactory.createOperation(this.operator, evaledOperands);
+					//logger.debug("Integer division: " + op1 + " DIV " + op2 + " = " + result);
+					break;
+				case MOD:
+					// TODO: Check if this is correct
+					if (op2 != 0)
+						result = op1 % op2;
+					else
+						return ExpressionFactory.createOperation(this.operator, evaledOperands);
+					//logger.debug("Integer remainder: " + op1 + " MOD " + op2 + " = " + result);
 					break;
 				default:
 					logger.info("Missing operand handler for \"" + this.operator + 
-					"\"! Cannot determine numeric result in evaluation of: "+this);
-				return ExpressionFactory.createOperation(this.operator, evaledOperands);
+					"\"! Cannot determine numeric result in evaluation.");
+					return ExpressionFactory.createOperation(this.operator, evaledOperands);
 				}
 			}
 			

@@ -23,13 +23,13 @@
  */
 
 /*
- * JDoc annotations are Copyright 2007-2012 Johannes Kinder
+ * JDoc annotations are Copyright 2007-2015 Johannes Kinder
  */
 
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.disasm.x86;
@@ -113,7 +113,7 @@ public class X86Disassembler implements Disassembler, X86Opcodes {
 			}
 			
 			if (instrDecoder == null) {
-				logger.error("Cannot find decoder for opcode " + Long.toHexString(opcode) + " at: "+ index + ".");
+				logger.error("Cannot find decoder for opcode " + Long.toHexString(opcode) + ".");
 				return null;
 			}
 
@@ -129,7 +129,8 @@ public class X86Disassembler implements Disassembler, X86Opcodes {
 			byteIndex = instrDecoder.getCurrentIndex();
 		} catch (Exception exp) {
 			logger.error("Error during disassembly:", exp);
-			exp.printStackTrace();
+			if (logger.isInfoEnabled())
+				exp.printStackTrace();
 			return null;
 		}
 		return instr;
@@ -527,7 +528,7 @@ public class X86Disassembler implements Disassembler, X86Opcodes {
 		null,
 		null,
 		null,
-		new InstructionDecoder("nop",ADDR_G,v_mode),
+		null,
 		/* 20 */
 		/* these are all backward in appendix A of the intel book */
 		new MoveDecoder("movl", ADDR_RMR, d_mode, ADDR_C, d_mode),

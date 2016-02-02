@@ -1,6 +1,6 @@
 /*
  * ProcedureState.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -46,62 +46,38 @@ public class ProcedureState implements AbstractState {
 		return procedureEntries;
 	}
 
-	/*
-	 * @see org.jakstab.analysis.AbstractState#getIdentifier()
-	 */
 	@Override
 	public String getIdentifier() {
-		// TODO Auto-generated method stub
-		return null;
+		return Integer.toString(hashCode());
 	}
 
-	/*
-	 * @see org.jakstab.analysis.AbstractState#getLocation()
-	 */
 	@Override
 	public Location getLocation() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/*
-	 * @see org.jakstab.analysis.AbstractState#join(org.jakstab.analysis.LatticeElement)
-	 */
 	@Override
 	public AbstractState join(LatticeElement l) {
 		ProcedureState other = (ProcedureState)l;
 		return new ProcedureState(other.procedureEntries.union(this.procedureEntries));
 	}
 
-	/*
-	 * @see org.jakstab.analysis.AbstractState#projectionFromConcretization(org.jakstab.rtl.expressions.RTLExpression[])
-	 */
 	@Override
 	public Set<Tuple<RTLNumber>> projectionFromConcretization(
 			RTLExpression... expressions) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/*
-	 * @see org.jakstab.analysis.LatticeElement#isBot()
-	 */
 	@Override
 	public boolean isBot() {
 		return procedureEntries.isEmpty();
 	}
 
-	/*
-	 * @see org.jakstab.analysis.LatticeElement#isTop()
-	 */
 	@Override
 	public boolean isTop() {
 		return procedureEntries == null;
 	}
 
-	/*
-	 * @see org.jakstab.analysis.LatticeElement#lessOrEqual(org.jakstab.analysis.LatticeElement)
-	 */
 	@Override
 	public boolean lessOrEqual(LatticeElement l) {
 		ProcedureState other = (ProcedureState)l;
@@ -110,6 +86,8 @@ public class ProcedureState implements AbstractState {
 
 	@Override
 	public String toString() {
+		if (isTop()) return "[TOP]";
+		if (isBot()) return "[BOT]";
 		return procedureEntries.toString();
 	}
 

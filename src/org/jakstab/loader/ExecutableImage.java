@@ -1,6 +1,6 @@
 /*
  * ExecutableImage.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -95,6 +95,15 @@ public interface ExecutableImage {
 	 * @return True if the address points to a code area, false otherwise.
 	 */
 	public boolean isCodeArea(AbsoluteAddress va);
+	
+	/**
+	 * Checks whether the specified virtual address is inside an import section of this executable
+	 * (plt for ELF, import table for PE)  
+	 * 
+	 * @param va The virtual address to check.
+	 * @return True if the address points to a import area, false otherwise.
+	 */
+	public boolean isImportArea(AbsoluteAddress va);
 	
 	/**
 	 * Read a static memory location, i.e., the initial value of a global variable or a constant.

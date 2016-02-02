@@ -1,6 +1,6 @@
 /*
  * Solver.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -19,7 +19,6 @@ package org.jakstab.solver;
 
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLExpression;
-import org.jakstab.solver.yices.YicesSolver;
 import org.jakstab.util.Logger;
 
 /**
@@ -36,10 +35,10 @@ public abstract class Solver {
 	/**
 	 * Creates a new solver context.
 	 * 
-	 * @return a new Solver instance, currently always of type YicesSolver
+	 * @return a new Solver instance
 	 */
 	public static Solver createSolver() {
-		return new YicesSolver();
+		return null;
 	}
 	
 	/**
@@ -49,9 +48,10 @@ public abstract class Solver {
 	 * @return true if the formula is satisfiable, false otherwise
 	 */
 	public static boolean isSatisfiable(RTLExpression f) {
-		YicesSolver ys = new YicesSolver();
-		ys.addAssertion(f);
-		return ys.isSatisfiable();
+		//YicesSolver ys = new YicesSolver();
+		//ys.addAssertion(f);
+		//return ys.isSatisfiable();
+		return false;
 	}
 	
 	public static boolean isUnsatisfiable(RTLExpression f) {

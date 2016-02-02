@@ -1,6 +1,6 @@
 /*
  * PessimisticBasicBlockFactory.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -25,7 +25,7 @@ import org.jakstab.Program;
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.asm.AbsoluteAddress;
 import org.jakstab.rtl.Context;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLNumber;
@@ -35,18 +35,22 @@ import org.jakstab.util.Logger;
 import org.jakstab.util.Tuple;
 
 /**
+ * The transformers created by this factory are basic blocks that begin with a 
+ * control flow statement and end on the last statement before the next control
+ * flow statement. The CFA edges created point from the first statement to the
+ * first statement of each successor block.
+ * 
  * @author Johannes Kinder
  */
 public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory implements StateTransformerFactory {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(PessimisticBasicBlockFactory.class);
 
 	@Override
 	public Set<CFAEdge> getTransformers(final AbstractState a) {
 		Program program = Program.getProgram();
 		// First statement
-		RTLStatement firstStmt = program.getStatement(a.getLocation());
+		RTLStatement firstStmt = program.getStatement((RTLLabel)a.getLocation());
 
 		Set<RTLStatement> blockHeads = new FastSet<RTLStatement>();
 		if (firstStmt instanceof RTLGoto) {
@@ -78,7 +82,7 @@ public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory im
 			transformers.add(new CFAEdge(head.getLabel(), stmt.getLabel(), block));
 		}
 
-		saveNewEdges(transformers, a.getLocation());
+		saveNewEdges(transformers, (RTLLabel)a.getLocation());
 
 		return transformers;
 	}
@@ -93,7 +97,7 @@ public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory im
 		for (Tuple<RTLNumber> pair : valuePairs) {
 			RTLNumber conditionValue = pair.get(0);
 			RTLNumber targetValue = pair.get(1);
-			Location nextLabel;
+			RTLLabel nextLabel;
 			// assume correct condition case 
 			assert conditionValue != null;
 			RTLExpression assumption = 
@@ -121,7 +125,7 @@ public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory im
 									targetValue)
 							);
 					// set next label to jump target
-					nextLabel = new Location(new AbsoluteAddress(targetValue));
+					nextLabel = new RTLLabel(new AbsoluteAddress(targetValue));
 				}
 			}
 			assumption = assumption.evaluate(new Context());
@@ -131,8 +135,6 @@ public class PessimisticBasicBlockFactory extends ResolvingTransformerFactory im
 			// Target address sanity check
 			if (nextLabel.getAddress().getValue() < 10L) {
 				logger.warn("Control flow from " + a.getLocation() + " reaches address " + nextLabel.getAddress() + "!");
-				if (Options.debug.getValue())
-					throw new ControlFlowException(a, "Unresolvable control flow from " + stmt.getLabel());
 			}
 
 			results.add(assume);

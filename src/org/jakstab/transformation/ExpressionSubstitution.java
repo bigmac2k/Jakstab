@@ -1,6 +1,6 @@
 /*
  * ExpressionSubstitution.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -17,17 +17,17 @@
  */
 package org.jakstab.transformation;
 
-import org.jakstab.Program;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.jakstab.analysis.*;
 import org.jakstab.analysis.substitution.ExpressionSubstitutionAnalysis;
 import org.jakstab.analysis.substitution.SubstitutionElement;
 import org.jakstab.analysis.substitution.SubstitutionState;
 import org.jakstab.cfa.CFAEdge;
+import org.jakstab.cfa.ControlFlowGraph;
 import org.jakstab.rtl.Context;
-import org.jakstab.rtl.expressions.ExpressionSimplifier;
-import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
-import org.jakstab.rtl.statements.RTLAssume;
 import org.jakstab.rtl.statements.RTLSkip;
 import org.jakstab.rtl.statements.RTLStatement;
 import org.jakstab.util.Logger;
@@ -37,17 +37,11 @@ import org.jakstab.util.Logger;
  */
 public class ExpressionSubstitution implements CFATransformation {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger
 			.getLogger(ExpressionSubstitution.class);
 	
-	private Program program;
 	private CPAAlgorithm cpaAlgo;
-
-	public ExpressionSubstitution(Program program) {
-		this.program = program;
-		cpaAlgo = CPAAlgorithm.createForwardAlgorithm(program, new ExpressionSubstitutionAnalysis());
-	}
+	private Set<CFAEdge> edgeSet;
 	
 	public static void substituteCFAEdge(CFAEdge edge, SubstitutionState s) {
 		RTLStatement stmt = (RTLStatement)edge.getTransformer();
@@ -58,47 +52,37 @@ public class ExpressionSubstitution implements CFATransformation {
 	
 	public static RTLStatement substituteStatement(RTLStatement stmt, SubstitutionState s) {
 		Context substCtx = new Context();
-		ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
-		logger.debug("substituting in: " + stmt + " at " + stmt.getLabel() + " state: " + s);
-		logger.debug("substitution state: " + s);
 		for (RTLVariable v : stmt.getUsedVariables()) {
 			SubstitutionElement el = s.getValue(v);
-			logger.debug("substitution value: " + v + " isTop? " + el.isTop());
 			if (!el.isTop()) {
 				substCtx.addAssignment(v, el.getExpression());
 			}
 		}
 		if (!substCtx.getAssignments().isEmpty()) {
-			logger.debug("Old stmt: " + stmt);
-			logger.debug("Substitution Context: " + substCtx);
+			//logger.info("Old stmt: " + stmt);
 			RTLStatement newStmt = stmt.copy().evaluate(substCtx);
-			logger.debug("New stmt: " + newStmt);
-			//if substitution not empty, try to reduce once more (Empty context)
+			//logger.info("New stmt: " + newStmt);
 			if (newStmt != null) {
-				RTLStatement reduced = newStmt.evaluate(new Context());
-				//if reduction is not empty, return it. Otherwise return skip
-				if (reduced != null) {
-					if(reduced instanceof RTLAssume) {
-						//execute simplification on assumption
-						RTLAssume assumption = (RTLAssume) reduced;
-						logger.debug("handing assumption of to simplifier: " + assumption);
-						RTLExpression newExpr = simplifier.simplify(assumption.getAssumption());
-						RTLAssume newAssumption = new RTLAssume(newExpr, assumption.getSource());
-						newAssumption.setLabel(assumption.getLabel());
-						newAssumption.setNextLabel(assumption.getNextLabel());
-						logger.debug("result of simplifier: " + newAssumption);
-						return newAssumption;
-					}
-					return reduced;
-				}
+				return newStmt.evaluate(new Context());
+			} else {
+				RTLSkip skip = new RTLSkip();
+				skip.setLabel(stmt.getLabel());
+				skip.setNextLabel(stmt.getNextLabel());
+				return skip;
 			}
-			RTLSkip skip = new RTLSkip();
-			skip.setLabel(stmt.getLabel());
-			skip.setNextLabel(stmt.getNextLabel());
-			return skip;
 		}
 		return stmt;
 	}
+	
+	public ExpressionSubstitution(ControlFlowGraph cfg) {
+		cpaAlgo = CPAAlgorithm.createForwardAlgorithm(cfg, new ExpressionSubstitutionAnalysis());
+		edgeSet = new HashSet<CFAEdge>(cfg.getEdges());
+	}
+	
+	public Set<CFAEdge> getCFA() {
+		return edgeSet;
+	}
+
 
 	@Override
 	public void run() {
@@ -109,7 +93,7 @@ public class ExpressionSubstitution implements CFATransformation {
 		cpaAlgo.run();
 		ReachedSet exprSubstStates = cpaAlgo.getReachedStates().select(1);
 		
-		for (CFAEdge edge : program.getCFA()) {
+		for (CFAEdge edge : edgeSet) {
 			assert exprSubstStates.where(edge.getSource()).size() == 1;
 			SubstitutionState s = (SubstitutionState)exprSubstStates.where(edge.getSource()).iterator().next();
 			substituteCFAEdge(edge, s);

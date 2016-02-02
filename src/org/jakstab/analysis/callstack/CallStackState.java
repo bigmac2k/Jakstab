@@ -1,6 +1,6 @@
 /*
  * CallStackState.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -23,6 +23,7 @@ import org.jakstab.Program;
 import org.jakstab.analysis.*;
 import org.jakstab.asm.*;
 import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.cfa.StateTransformer;
 import org.jakstab.rtl.expressions.*;
 import org.jakstab.rtl.statements.*;
@@ -34,19 +35,18 @@ import org.jakstab.util.Tuple;
  */
 public class CallStackState implements AbstractState {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(CallStackState.class);
 	
 	public static CallStackState TOP = new CallStackState(null);
 	public static CallStackState BOT = new CallStackState(null);
 	
-	private final Deque<Location> callStack;
+	private final Deque<RTLLabel> callStack;
 	
 	public CallStackState() {
-		this(new LinkedList<Location>());
+		this(new LinkedList<RTLLabel>());
 	}
 	
-	public CallStackState(Deque<Location> callStack) {
+	public CallStackState(Deque<RTLLabel> callStack) {
 		this.callStack = callStack;
 	}
 
@@ -68,7 +68,7 @@ public class CallStackState implements AbstractState {
 			public CallStackState visit(RTLAssume stmt) {
 
 				Instruction instr = Program.getProgram().getAssemblyMap().get(stmt.getAddress());
-				Deque<Location> postStack;
+				Deque<RTLLabel> postStack;
 				RTLGoto gotoStmt = stmt.getSource();
 
 				long addressValue = stmt.getAddress().getValue(); 
@@ -77,33 +77,33 @@ public class CallStackState implements AbstractState {
 				// in the prologue there is only a single call
 				// Return
 				if (gotoStmt.getType() == RTLGoto.Type.RETURN) {
-					postStack = new LinkedList<Location>(callStack);
+					postStack = new LinkedList<RTLLabel>(callStack);
 					if (postStack.isEmpty()) {
 						logger.warn("Return instruction on empty call stack!");
 					} else {
-						Location target = postStack.pop();
+						RTLLabel target = postStack.pop();
 						logger.debug("Call stack: Return to " + target + ". Remaining stack " + postStack);
 					}
 				} 
 				// Prologue Call
 				else if (Program.getProgram().getHarness().contains(stmt.getAddress())) {
-					postStack = new LinkedList<Location>(callStack);
-					postStack.push(new Location(Program.getProgram().getHarness().getFallthroughAddress(stmt.getAddress())));
+					postStack = new LinkedList<RTLLabel>(callStack);
+					postStack.push(new RTLLabel(Program.getProgram().getHarness().getFallthroughAddress(stmt.getAddress())));
 				}
 				// Call
 				else if (gotoStmt.getType() == RTLGoto.Type.CALL) {
-					Location returnLabel; 
+					RTLLabel returnLabel; 
 					if (instr == null) {
 						// Happens in import stubs containing a call
 						logger.info("No instruction at address " + stmt.getLabel());
 						returnLabel = gotoStmt.getNextLabel();
 					} else {
-						returnLabel = new Location(new AbsoluteAddress(addressValue + instr.getSize()));
+						returnLabel = new RTLLabel(new AbsoluteAddress(addressValue + instr.getSize()));
 					}
 
-					postStack = new LinkedList<Location>();
-					for (Iterator<Location> iter = callStack.descendingIterator(); iter.hasNext();) {
-						Location exRetLoc = iter.next();
+					postStack = new LinkedList<RTLLabel>();
+					for (Iterator<RTLLabel> iter = callStack.descendingIterator(); iter.hasNext();) {
+						RTLLabel exRetLoc = iter.next();
 						if (exRetLoc.equals(returnLabel)) {
 							logger.verbose("Recursion detected in call at " + stmt.getAddress());
 							break;

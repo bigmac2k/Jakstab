@@ -1,6 +1,6 @@
 /*
  * Harness.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -26,6 +26,11 @@ import org.jakstab.asm.AbsoluteAddress;
  * safe final return destination with an explicit halt instruction.   
  */
 public interface Harness {
+
+	public static final long PROLOGUE_BASE = 0xface0000L;
+	public static final long EPILOGUE_BASE = 0xfee70000L;
+	public static final AbsoluteAddress prologueAddress = new AbsoluteAddress(PROLOGUE_BASE);
+	public static final AbsoluteAddress epilogueAddress = new AbsoluteAddress(EPILOGUE_BASE);
 
 	public void install(Program program);
 	

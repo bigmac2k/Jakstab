@@ -1,6 +1,6 @@
 /*
  * Options.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -34,7 +34,6 @@ import org.jakstab.util.Logger;
  */
 public class Options {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(Options.class);
 
 	private final static int lineLength = 80;
@@ -60,7 +59,7 @@ public class Options {
 	});
 	
 	static void addOption(JOption<?> o) {
-		String name = o.getName().toLowerCase();
+		String name = o.getName();
 		if (options.containsKey(name)) {
 			logger.fatal("Option " + name + " already present!");
 			System.exit(1);
@@ -74,9 +73,10 @@ public class Options {
 	public static String mainFilename = null;
 	public static List<String> moduleFilenames = new LinkedList<String>();
 
+	public static String arguments;
+
 	public static JOption<String> sslFilename = JOption.create("ssl", "file", jakstabHome + "/ssl/pentium.ssl", "Use <file> instead of pentium.ssl.");
 	public static JOption<Long> startAddress = JOption.create("a", "address", -1L, "Start analysis at given virtual address.");
-	public static JOption<String> startSymbol = JOption.create("sym", "symbol", "", "Start analysis at given symbol.");
 	public static JOption<Boolean> wdm = JOption.create("wdm", "WDM mode, export main function as DriverMain.");
 	public static JOption<Boolean> allEdges = JOption.create("all-edges", "Generate a true over-approximation and add edges to all possible addresses when over-approximating a jump (very slow!).");
 	public static JOption<Boolean> dumpStates = JOption.create("s", "Output all reached states after analysis.");	
@@ -94,8 +94,9 @@ public class Options {
 	public static JOption<Boolean> initHeapToBot = JOption.create("bot-heap", "Initialize heap cells to BOT to force strong updates.");
 	public static JOption<Boolean> summarizeRep = JOption.create("summarize-rep", "Use summarizing transformer for string instructions.");
 	public static JOption<Boolean> basicBlocks = JOption.create("basicblocks", "Build CFA from basic-blocks instead of single statements.");
+	public static JOption<Integer> simplifyVCFG = JOption.create("simplifyVCFG", "l", 1, "In VPC-CFG reconstruction, simplify the reconstructed graph using (0) nothing (1) DCE (2) DCE + Expression Substitution");
 	public static JOption<Integer> verbosity = JOption.create("v", "level", 3, "Set verbosity to value. Default is 3.");
-	public static JOption<Integer> timeout = JOption.create("timeout", "t", -1, "Set timeout in seconds for the anaSlysis.");
+	public static JOption<Integer> timeout = JOption.create("timeout", "t", -1, "Set timeout in seconds for the analysis.");
 	public static JOption<Integer> procedureAbstraction = JOption.create("procedures", "n", 0, "Level of procedure assumptions: " +
 			"0: Pessimistic: No assumptions, treat calls and returns as jumps (default). " + 
 			"1: Semi-optimistic: Abstract unknown calls according to ABI contract. " + 
@@ -105,6 +106,7 @@ public class Options {
 	private static AnalysisManager mgr = AnalysisManager.getInstance();
 	public static JOption<String> cpas = JOption.create("cpa", "{" + mgr.getShorthandsString() + "}", "x", "Configure which analyses to use for control flow reconstruction.");
 	public static JOption<String> secondaryCPAs = JOption.create("cpa2", "{" + mgr.getShorthandsString() + "}", "", "Secondary analyses to be performed after the initial CFG reconstruction and dead code elimination are completed.");
+	public static JOption<String> procedureGraph = JOption.create("procedure-graph", "p", "", "Generate intraprocedural CFG for procedure with give name (requires symbols)");
 	
 	/**
 	 * Handle command line options.
@@ -116,8 +118,16 @@ public class Options {
 		// Pre-load analyses so that they can register their options
 		AnalysisManager.getInstance();
 		
+		StringBuilder argStringBuilder = new StringBuilder();
+		for (int i = 0; i < args.length - 1; i++) {
+			argStringBuilder.append(args[i]).append(" ");
+		}
+		if (args.length > 0)
+			argStringBuilder.append(args[args.length - 1]);
+		arguments = argStringBuilder.toString();
+		
 		for (int i = 0; i < args.length; i++) {
-			String arg = args[i].toLowerCase();
+			String arg = args[i];
 			// Dash (-) arguments
 			if (arg.startsWith("-")) {
 				
@@ -140,10 +150,8 @@ public class Options {
 					}
 				}			
 				// Arguments which require arguments
-				else if (i + 1 < args.length) {
-					if (arg.equals("-m")) {
-						mainFilename = args[++i];
-					} 
+				else if (arg.equals("-m")) {
+					mainFilename = args[++i];
 				} else {
 					logger.fatal("Invalid command line argument: " + arg);
 					logger.fatal("");
@@ -155,7 +163,7 @@ public class Options {
 				moduleFilenames.add(arg);
 			}
 		}
-
+		
 		if (mainFilename == null) {
 			logger.fatal("No main file specified!");
 			logger.fatal("");

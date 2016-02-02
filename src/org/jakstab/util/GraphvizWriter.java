@@ -1,6 +1,6 @@
 /*
  * GraphvizWriter.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,9 +22,12 @@ import java.awt.Color;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jakstab.Main;
+import org.jakstab.Options;
 import org.jakstab.util.Logger;
 
 /**
@@ -46,6 +49,8 @@ public class GraphvizWriter implements GraphWriter {
 		out.write(" {\n");
 		out.write("node[shape=rectangle,style=filled,fillcolor=lightsteelblue,color=lightsteelblue]\n");
 		out.write("bgcolor=\"transparent\"\n");
+		out.write("graph [label=\"Jakstab v" + Main.version + "   " + (new Date()) + "\\n" + Options.arguments + "\", labelloc=t, fontsize=35, pad=30]");
+
 	}
 
 	@Override
@@ -84,15 +89,39 @@ public class GraphvizWriter implements GraphWriter {
 	
 	@Override
 	public void writeEdge(String id1, String id2, Color color) throws IOException {
-		Map<String,String> map = new HashMap<String, String>();
-		if (color != null) {
-			map.put("color", colorConvert(color));
-		}
-		writeEdge(id1, id2, map);
+		writeEdge(id1, id2, null, null);
 	}
 
 	@Override
-	public final void writeEdge(String id1, String id2, Map<String,String> properties) throws IOException { 
+	public final void writeEdge(String id1, String id2, String label) throws IOException {
+		writeEdge(id1, id2, label, null);
+	}
+	
+	@Override
+	public final void writeEdge(String id1, String id2, String label, Color color) throws IOException {
+		writeEdge(id1, id2, label, color, false);
+	}
+
+	@Override
+	public void writeEdge(String id1, String id2, String label, Color color,
+			boolean weakEdge) throws IOException {
+		Map<String,String> map = new HashMap<String, String>();
+		if (label != null && !label.isEmpty()) {
+			map.put("label", label.replace("\n", "\\n"));
+		}
+		if (color != null) {
+			map.put("color", colorConvert(color));
+		}
+		if (weakEdge) {
+			map.put("constraint", "false");
+			map.put("style", "dashed");
+			map.put("splines", "false");
+		}
+		writeEdge(id1, id2, map);
+		
+	}
+
+	private final void writeEdge(String id1, String id2, Map<String,String> properties) throws IOException { 
 		out.write(toIdentifier(id1));
 		out.write(" -> ");
 		out.write(toIdentifier(id2));
@@ -112,29 +141,9 @@ public class GraphvizWriter implements GraphWriter {
 		out.write(";\n");
 	}
 
-	@Override
-	public final void writeLabeledEdge(String id1, String id2, String label) throws IOException {
-		writeLabeledEdge(id1, id2, label, null);
-	}
-	
-	@Override
-	public final void writeLabeledEdge(String id1, String id2, String label, Color color) throws IOException {
-		Map<String,String> map = new HashMap<String, String>();
-		map.put("label", label.replace("\n", "\\n"));
-		if (color != null) {
-			map.put("color", colorConvert(color));
-		}
-		writeEdge(id1, id2, map);
-	}
-
 	private static final String toIdentifier(String id) {
-		id = id.replace('@', '_');
-		id = id.replace('.', '_');
-		id = id.replace(':', '_');
-		id = id.replace('-', '_');
-		if (!Character.isLetter(id.charAt(0)))
-			return "a" + id;
-		else return id;
+		id = id.replace("\"", "\\\"");
+		return "\"" + id + "\"";
 	}
 
 	@Override

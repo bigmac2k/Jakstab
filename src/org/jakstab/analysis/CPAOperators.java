@@ -1,6 +1,6 @@
 /*
  * CPAOperators.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -48,8 +48,6 @@ public final class CPAOperators {
 	}
 
 	public static boolean stopJoin(AbstractState s, ReachedSet reached, Precision precision) {
-		//logger.debug("stopJoin(" + s + ", " + reached + ", " + precision + " == (reached: " + reached.isEmpty() + ", s.lessOrEqual: " +  s.lessOrEqual(Lattices.joinAll(reached)) + ")");
-		//return true;
 		if (reached.isEmpty()) return false;
 		return s.lessOrEqual(Lattices.joinAll(reached));
 	}

@@ -25,7 +25,7 @@
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.disasm.x86;
@@ -39,7 +39,6 @@ import org.jakstab.util.Logger;
 // basic float instruction decoder class
 public class FPInstructionDecoder extends InstructionDecoder {
 
-	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(FPInstructionDecoder.class);
 
 

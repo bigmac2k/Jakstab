@@ -1,6 +1,6 @@
 /*
  * RTLMemoryAssignment.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -50,14 +50,17 @@ public class RTLMemoryAssignment extends AbstractRTLStatement implements RTLStat
 		invalidateCache();
 		RTLExpression evaldRHS = this.rightHandSide.evaluate(context);
 
-		if (evaldRHS == null) logger.warn("No more RHS after evaluation of " + this.toString());
+		if (evaldRHS == null) {
+			logger.warn("No more RHS after evaluation of " + this.toString());
+		} else {
+			ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
+			evaldRHS = simplifier.simplify(evaldRHS);
+		}
 
-		ExpressionSimplifier simplifier = ExpressionSimplifier.getInstance();
-		evaldRHS = simplifier.simplify(evaldRHS);
+		// remove killed memory location from the context
+		context.removeAssignment(leftHandSide);		
 
-		// remove all killed assignments from the context
-		context.removeAssignment(leftHandSide.getDefinedVariablesOnWrite());
-
+		// perform substitution and assignment for addressing operands
 		RTLExpression evaldLHS = this.leftHandSide.evaluate(context);
 
 		if (evaldLHS.equals(evaldRHS)) {

@@ -1,6 +1,6 @@
 /*
  * ControlFlowReconstruction.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -58,7 +58,7 @@ public class ControlFlowReconstruction implements Algorithm {
 		
 		@Override
 		public boolean add(AbstractState a) {
-			if (!program.containsLabel((a.getLocation()))) {
+			if (!program.containsLabel((RTLLabel)a.getLocation())) {
 				return priorityList.add(a);
 			} else {
 				if (priorityList.contains(a)) return false;
@@ -83,12 +83,7 @@ public class ControlFlowReconstruction implements Algorithm {
 		
 		@Override
 		public String toString() {
-			StringBuffer buf = new StringBuffer("Worklist(wl: ");
-			buf.append(worklist.toString());
-			buf.append(", pr: ");
-			buf.append(priorityList.toString());
-			buf.append(")");
-			return buf.toString();
+			return size() + " elements. " + "Prio: " + priorityList.toString() + " Std: " + worklist.toString();
 		}
 
 	}
@@ -126,7 +121,6 @@ public class ControlFlowReconstruction implements Algorithm {
 
 	}
 	
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(ControlFlowReconstruction.class);
 	
 	private Program program;
@@ -150,7 +144,6 @@ public class ControlFlowReconstruction implements Algorithm {
 		for (int i=0; i<Options.cpas.getValue().length(); i++) {
 			
 			char shortHand = Options.cpas.getValue().charAt(i);
-			if(shortHand == ',') continue;
 			
 			// Special handling for trace replay analysis that really creates multiple CPAs
 			if (shortHand == 't') {
@@ -206,7 +199,7 @@ public class ControlFlowReconstruction implements Algorithm {
 				transformerFactory = new PessimisticStateTransformerFactory();
 				break;
 			case 1:
-				transformerFactory = new SemiOptimisticStateTransformerFactory();
+				transformerFactory = new InterproceduralTransformerFactory();
 				break;
 			case 2:
 				transformerFactory = new OptimisticStateTransformerFactory();
@@ -220,7 +213,7 @@ public class ControlFlowReconstruction implements Algorithm {
 		Worklist<AbstractState> worklist = new PriorityWorklist();
 		//Worklist<AbstractState> worklist = new FastSet<AbstractState>();
 
-		cpaAlgorithm = new CPAAlgorithm(program, cpa, transformerFactory, worklist, Options.failFast.getValue());
+		cpaAlgorithm = new CPAAlgorithm(cpa, transformerFactory, worklist, Options.failFast.getValue());
 	}
 
 	public ReachedSet getReachedStates() {
@@ -273,7 +266,7 @@ public class ControlFlowReconstruction implements Algorithm {
 							break;
 						
 						if (last != null) {
-							for (CFAEdge edge : transformerFactory.getExistingOutEdges(last.getLocation())) {
+							for (CFAEdge edge : transformerFactory.getExistingOutEdges((RTLLabel)last.getLocation())) {
 								if (edge.getTarget().equals(state.getLocation())) {
 									logger.warn(edge.getTransformer());
 									break;
@@ -289,10 +282,10 @@ public class ControlFlowReconstruction implements Algorithm {
 
 					// Replay basic block up to the error state location
 					if (transformerFactory instanceof PessimisticBasicBlockFactory) {
-						for (CFAEdge edge : transformerFactory.getExistingOutEdges(last.getLocation())) {
+						for (CFAEdge edge : transformerFactory.getExistingOutEdges((RTLLabel)last.getLocation())) {
 							BasicBlock bb = (BasicBlock)edge.getTransformer();
-							if (bb.containsLocation(e.getState().getLocation())) {
-								logger.warn(bb.toStringUntil(e.getState().getLocation()));
+							if (bb.containsLocation((RTLLabel)e.getState().getLocation())) {
+								logger.warn(bb.toStringUntil((RTLLabel)e.getState().getLocation()));
 								break;
 							}
 						}
@@ -303,7 +296,7 @@ public class ControlFlowReconstruction implements Algorithm {
 					else {
 						logger.warn("Edges from error state: ");
 						for (CFAEdge edge : transformerFactory
-								.getExistingOutEdges(e.getState().getLocation()))
+								.getExistingOutEdges((RTLLabel)e.getState().getLocation()))
 							logger.warn(edge.getTransformer());
 					}
 					
@@ -348,7 +341,7 @@ public class ControlFlowReconstruction implements Algorithm {
 								if (instr instanceof X86Instruction &&
 										((X86Instruction)instr).hasPrefixLOCK() &&
 										((X86Instruction)instr).hasPrefixREPZ()) {
-									sb.append(program.getStatement(s.getLocation()));
+									sb.append(program.getStatement((RTLLabel)s.getLocation()));
 								} else {
 									sb.append(instr.toString(addr.getValue(), symFinder));
 								}
@@ -366,11 +359,7 @@ public class ControlFlowReconstruction implements Algorithm {
 		} catch (RuntimeException e) {
 			// For other runtime exceptions (bugs in Jakstab), set the status to the name of the exception 
 			status = e.toString();
-			e.printStackTrace();
 			throw e;
-		} catch (AssertionError e) {
-			status = e.toString();
-			e.printStackTrace();
 		} finally {
 			program.setCFA(transformerFactory.getCFA());
 			program.setUnresolvedBranches(transformerFactory.getUnresolvedBranches());

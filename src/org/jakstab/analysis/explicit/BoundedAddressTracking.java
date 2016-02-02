@@ -1,6 +1,6 @@
 /*
  * BoundedAddressTracking.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -42,7 +42,6 @@ import com.google.common.collect.*;
  */
 public class BoundedAddressTracking implements ConfigurableProgramAnalysis {
 
-	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(BoundedAddressTracking.class);
 
 	public static void register(AnalysisProperties p) {
@@ -185,7 +184,7 @@ public class BoundedAddressTracking implements ConfigurableProgramAnalysis {
 	}
 
 	@Override
-	public AbstractState initStartState(Location label) {
+	public AbstractState initStartState(Location location) {
 		return BasedNumberValuation.createInitialState();
 	}
 
@@ -215,5 +214,5 @@ public class BoundedAddressTracking implements ConfigurableProgramAnalysis {
 			regions.add(e.getRegion());
 		return regions.size();
 	}
-
+	
 }

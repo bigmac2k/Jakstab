@@ -1,6 +1,6 @@
 /*
  * PessimisticStateTransformerFactory.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -25,7 +25,7 @@ import org.jakstab.Program;
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.asm.AbsoluteAddress;
 import org.jakstab.rtl.Context;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLNumber;
@@ -42,14 +42,12 @@ import org.jakstab.util.Tuple;
  */
 public class PessimisticStateTransformerFactory extends ResolvingTransformerFactory {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(PessimisticStateTransformerFactory.class);
 
 	@Override
 	public Set<CFAEdge> resolveGoto(final AbstractState a, final RTLGoto stmt) {
 
 		assert stmt.getCondition() != null;
-		logger.debug("resolving goto: " + stmt);
 
 		Set<CFAEdge> results = new FastSet<CFAEdge>();
 
@@ -58,7 +56,7 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 		for (Tuple<RTLNumber> pair : valuePairs) {
 			RTLNumber conditionValue = pair.get(0);
 			RTLNumber targetValue = pair.get(1);
-			Location nextLabel;
+			RTLLabel nextLabel;
 			// assume correct condition case 
 			assert conditionValue != null;
 			RTLExpression assumption = 
@@ -74,8 +72,6 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 						logger.info(stmt.getLabel() + ": Cannot resolve target expression " + 
 								stmt.getTargetExpression() + ". Continuing with unsound underapproximation.");
 						logger.debug("State is: " + a);
-						logger.debug("Stmt: " + stmt + " cond: "+ stmt.getCondition() + " target: " + stmt.getTargetExpression() );
-
 						sound = false;
 						unresolvedBranches.add(stmt.getLabel());
 						if (Options.debug.getValue())
@@ -91,7 +87,7 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 							targetValue = it.next().toNumericConstant();
 							assumption = ExpressionFactory.createEqual(stmt.getTargetExpression(), targetValue);
 							// set next label to jump target
-							nextLabel = new Location(new AbsoluteAddress(targetValue));
+							nextLabel = new RTLLabel(new AbsoluteAddress(targetValue));
 							RTLAssume assume = new RTLAssume(assumption, stmt);
 							assume.setLabel(stmt.getLabel());
 							assume.setNextLabel(nextLabel);
@@ -109,7 +105,7 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 									targetValue)
 							);
 					// set next label to jump target
-					nextLabel = new Location(new AbsoluteAddress(targetValue));
+					nextLabel = new RTLLabel(new AbsoluteAddress(targetValue));
 				}
 			}
 			assumption = assumption.evaluate(new Context());
@@ -119,8 +115,6 @@ public class PessimisticStateTransformerFactory extends ResolvingTransformerFact
 			// Target address sanity check
 			if (nextLabel.getAddress().getValue() < 10L) {
 				logger.warn("Control flow from " + a.getLocation() + " reaches address " + nextLabel.getAddress() + "!");
-				if (Options.debug.getValue())
-					throw new ControlFlowException(a, "Unresolvable control flow from " + stmt.getLabel());
 			}
 
 			results.add(new CFAEdge(assume.getLabel(), assume.getNextLabel(), assume));

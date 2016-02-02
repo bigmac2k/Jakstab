@@ -1,6 +1,6 @@
 /*
  * CPAAlgorithm.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -19,6 +19,7 @@ package org.jakstab.analysis;
 
 import java.util.*;
 
+import org.jakstab.AnalysisManager;
 import org.jakstab.Options;
 import org.jakstab.Program;
 import org.jakstab.Algorithm;
@@ -36,10 +37,8 @@ import org.jakstab.util.*;
  */
 public class CPAAlgorithm implements Algorithm {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(CPAAlgorithm.class);
 
-	private final Program program;
 	private final StateTransformerFactory transformerFactory;
 	private final ConfigurableProgramAnalysis cpa;
 	private final ReachedSet reached;
@@ -57,12 +56,11 @@ public class CPAAlgorithm implements Algorithm {
 	 * forward transformer factory and worklist suitable for an analysis of a complete 
 	 * and already reconstructed control flow automaton.
 	 * 
-	 * @param program The program object
 	 * @param cpas The list of analyses to be performed  
 	 */
-	public static CPAAlgorithm createForwardAlgorithm(Program program, ConfigurableProgramAnalysis... cpas) {
+	public static CPAAlgorithm createForwardAlgorithm(ControlFlowGraph cfg, ConfigurableProgramAnalysis... cpas) {
 		ConfigurableProgramAnalysis cpa = new CompositeProgramAnalysis(new LocationAnalysis(), cpas);
-		return new CPAAlgorithm(program, cpa, new CFATransformerFactory(program.getCFA()), new FastSet<AbstractState>());
+		return new CPAAlgorithm(cpa, new CFATransformerFactory(cfg), new FastSet<AbstractState>());
 	}
 
 	/**
@@ -70,29 +68,29 @@ public class CPAAlgorithm implements Algorithm {
 	 * backward transformer factory and worklist suitable for an analysis of a complete 
 	 * and already reconstructed control flow automaton.
 	 * 
-	 * @param program The program object
 	 * @param cpas The list of backward analyses to be performed  
 	 */
-	public static CPAAlgorithm createBackwardAlgorithm(Program program, ConfigurableProgramAnalysis... cpas) {
+	public static CPAAlgorithm createBackwardAlgorithm(ControlFlowGraph cfg, ConfigurableProgramAnalysis... cpas) {
 		ConfigurableProgramAnalysis cpa = new CompositeProgramAnalysis(new BackwardLocationAnalysis(), cpas);
-		return new CPAAlgorithm(program, cpa, new ReverseCFATransformerFactory(program.getCFA()), new FastSet<AbstractState>());
+		return new CPAAlgorithm(cpa, new ReverseCFATransformerFactory(cfg), new FastSet<AbstractState>());
 	}
 
-	public CPAAlgorithm(Program program, ConfigurableProgramAnalysis cpa,
+	public CPAAlgorithm(ConfigurableProgramAnalysis cpa,
 			StateTransformerFactory transformerFactory, Worklist<AbstractState> worklist) {
-		this(program, cpa, transformerFactory, worklist, false);
+		this(cpa, transformerFactory, worklist, false);
 	}
 
-	public CPAAlgorithm(Program program, ConfigurableProgramAnalysis cpa,
+	public CPAAlgorithm(ConfigurableProgramAnalysis cpa,
 			StateTransformerFactory transformerFactory, Worklist<AbstractState> worklist, boolean failFast) {
 		super();
-		this.program = program;
 		this.cpa = cpa;
 		this.transformerFactory = transformerFactory;
 		this.worklist = worklist;
 		this.failFast = failFast;
 		
-		if (Options.errorTrace.getValue() || Options.asmTrace.getValue() )
+		if (Options.errorTrace.getValue() || Options.asmTrace.getValue() || 
+				AnalysisManager.getInstance().getAnalysis(
+						org.jakstab.analysis.explicit.VpcTrackingAnalysis.class) != null)
 			art = new AbstractReachabilityTree();
 		else
 			art = null;
@@ -142,6 +140,7 @@ public class CPAAlgorithm implements Algorithm {
 		logger.debug("Starting CPA algorithm.");
 		
 		Runtime runtime = Runtime.getRuntime();
+		Program program = Program.getProgram();
 
 		AbstractState start = cpa.initStartState(transformerFactory.getInitialLocation()); 
 		worklist.add(start);
@@ -160,8 +159,6 @@ public class CPAAlgorithm implements Algorithm {
 		long lastSteps = 0;
 		long lastTime = 0;
 		while (!worklist.isEmpty() && !stop && (!failFast || isSound())) {
-			
-			logger.debug("Working with worklist: " + worklist);
 
 			statesVisited++;
 			if (++steps == stepThreshold) {
@@ -201,6 +198,9 @@ public class CPAAlgorithm implements Algorithm {
 
 			// We need the state before precision refinement for building the ART  
 			AbstractState unadjustedState = worklist.pick();
+			
+			// Prefix everything by current location for easier debugging
+			//Logger.setGlobalPrefix(unadjustedState.getLocation().toString());
 
 			precision = precisionMap.get(unadjustedState.getLocation());
 			
@@ -211,36 +211,44 @@ public class CPAAlgorithm implements Algorithm {
 			precision = pair.getRight();
 			precisionMap.put(a.getLocation(), precision);
 			
-			logger.debug("Picked from worklist: " + a.getIdentifier());
+			//logger.debug("Picked from worklist: " + a.getIdentifier());
 			
-			// getTransformers() and post() might throw exceptions
+			// getTransformers() might throw exceptions
 			try {
 				// For each outgoing edge
 				for (CFAEdge cfaEdge : transformerFactory.getTransformers(a)) {
-					
+
 					Precision targetPrecision = precisionMap.get(cfaEdge.getTarget());
 					if (targetPrecision == null) {
 						targetPrecision = cpa.initPrecision(cfaEdge.getTarget(), cfaEdge.getTransformer());
 						precisionMap.put(cfaEdge.getTarget(), targetPrecision);
 					}
 
-					// Prefix everything by current location for easier debugging
-					//Logger.setGlobalPrefix(cfaEdge.getSource().toString());
-
 					// Calculate the set of abstract successors
-					Set<AbstractState> successors = cpa.post(a, cfaEdge, targetPrecision);
+					// post() might throw exceptions 
+					Set<AbstractState> successors;
+					try {
+						successors = cpa.post(a, cfaEdge, targetPrecision);
+					} catch (StateException e) {
+						if (e.getState() == null) {
+							e.setState(a);
+						}
+						if (art != null && !unadjustedState.equals(e.getState())) 
+							art.addChild(unadjustedState, cfaEdge, e.getState());
+						throw e;
+					}
 
 					if (successors.isEmpty()) {
-						logger.debug("No successors along edge " + cfaEdge + ", reached halt?");
+						logger.debug("No successors along edge " + cfaEdge);
 						continue;
 					}
-					
-					logger.debug("via edge " + cfaEdge.toString() + " " + successors.size() + " successors.");
-					
+
+					//logger.debug("via edge " + cfaEdge.toString() + " " + successors.size() + " successors.");
+
 					// Process every successor
 					for (AbstractState succ : successors) {
-						logger.debug("Processing new post state: " + succ.getIdentifier());
-
+						//logger.debug("Processing new post state: " + succ.getIdentifier());
+						
 						// Try to merge the new state with an existing one 
 						Set<AbstractState> statesToRemove = new FastSet<AbstractState>();
 						Set<AbstractState> statesToAdd = new FastSet<AbstractState>();
@@ -248,9 +256,7 @@ public class CPAAlgorithm implements Algorithm {
 						for (AbstractState r : reached.where(0, ((CompositeState)succ).getComponent(0))) {
 							AbstractState merged = cpa.merge(succ, r, targetPrecision);
 							if (!merged.equals(r)) {
-								//logger.debug("Merge of " + succ.getIdentifier() + " and " + r.getIdentifier() + " produced new state " + merged.getIdentifier());
-								//logger.debug("widen: merge of " + r + " and " + succ);
-								//assert false;
+								//logger.debug("Merge of new successor:\n" + succ + "\n and reached state:\n" + r + "\n produced new state \n" + merged);
 								statesToRemove.add(r);
 								statesToAdd.add(merged);
 							}
@@ -266,39 +272,34 @@ public class CPAAlgorithm implements Algorithm {
 						for (AbstractState r : statesToAdd) {
 							// Only add r to the worklist if it hasn't been reached yet
 							if (reached.add(r)) {
-								logger.debug("CPAAlgorithm: adding r to worklist because not in reached: " + r);
 								worklist.add(r);
-								if (art != null) art.addChild(unadjustedState, r);
+								if (art != null) art.addChild(unadjustedState, cfaEdge, r);
 							}
 						}
 
 						// if not stopped add to worklist
 						if (!cpa.stop(succ, reached, targetPrecision)) {
+
+							/*if (!statesToAdd.isEmpty()) {
+								logger.verbose("Merged successor with " + statesToAdd.size() + " states, but still adding it to reached and worklist:");
+								logger.warn(succ);
+							}*/
+							
 							worklist.add(succ);
 							reached.add(succ);
-							if (art != null) art.addChild(unadjustedState, succ);
+							if (art != null) art.addChild(unadjustedState, cfaEdge, succ);
 						}
 					}
+
 					// end for each outgoing edge
-				}
+				} 
 			} catch (StateException e) {
+				// Fill in state for disassembly and unknownpointer exceptions
 				if (e.getState() == null) {
 					e.setState(a);
 				}
-				if (art != null && !unadjustedState.equals(e.getState())) 
-					art.addChild(unadjustedState, e.getState());
 				throw e;
 			}
-			if(failFast && !isSound() && Options.errorTrace.getValue()) {
-				throw new ControlFlowException(a,"failed fast");
-			}
-			
-			//DEEEBUG debug!
-			/*try {
-				System.in.read();
-			} catch (IOException e) {
-				assert false;
-			}*/
 		}
 		long endTime = System.currentTimeMillis();
 		if (endTime - startTime > 0) {

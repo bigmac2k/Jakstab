@@ -1,6 +1,6 @@
 /*
  * Win32StubLibrary.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -29,7 +29,7 @@ import org.jakstab.util.FastSet;
 import org.jakstab.util.Logger;
 import org.jakstab.asm.AbsoluteAddress;
 import org.jakstab.asm.SymbolFinder;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.expressions.*;
 import org.jakstab.rtl.statements.*;
 import org.jakstab.ssl.Architecture;
@@ -86,7 +86,6 @@ public class Win32StubLibrary implements StubProvider {
 		
 	}
 	
-	@SuppressWarnings("unused")
 	private final static Logger logger = Logger.getLogger(Win32StubLibrary.class);
 
 	private static final String stubDir =  Options.jakstabHome + "/stubs/win32/";
@@ -133,89 +132,95 @@ public class Win32StubLibrary implements StubProvider {
 	}
 	
 	private void loadDefFile(String library) {
+
 		// Add to loaded files even if we fail to load it to avoid multiple warnings
 		loadedDefFiles.add(library);
-		try {
-			String baseName;
-			int dotIndex = library.lastIndexOf('.');
-			if (dotIndex > 0) baseName = library.substring(0, dotIndex);
-			else baseName = library;
-			
-			File defFile = new File(stubDir + baseName + ".def");
-			if (defFile.canRead()) {
-				
-				BufferedReader in = new BufferedReader(new FileReader(defFile));
-				boolean inExports = false; 
-				String line;
-				while ((line = in.readLine()) != null) {
-					line = line.trim();
+		String baseName;
+		int dotIndex = library.lastIndexOf('.');
+		if (dotIndex > 0) 
+			baseName = library.substring(0, dotIndex);
+		else 
+			baseName = library;
+		File defFile = new File(stubDir + baseName + ".def");
 
-					// Skip empty lines
-					if (line.length() == 0)
-						continue;
-					
-					// ignore comments and preprocessor directives
-					if (line.startsWith(";") || line.startsWith("#")) continue;
-					if (line.startsWith("EXPORTS")) {
-						inExports = true;
-						continue;
-					}
-					if (!inExports) continue;
-					// parse exported function:
-					
-					int callingConvention = STDCALL;
-					boolean returns = true;
-					int stackIncrement = 0;
-
-					int i = line.length();
-					if (line.length() > 4 && line.substring(i - 4, i).equals("DATA")) {
-						callingConvention = EXTERNAL_VARIABLE;
-						i -= 4;
-						while (i >= 1 && line.charAt(i - 1) == ' ')
-							i--;
-					}
-					int finalAt = line.lastIndexOf('@');
-					if (finalAt >= 0 && finalAt < i - 1) {
-						try {
-							stackIncrement = Integer.parseInt(line.substring(finalAt + 1, i));
-							i = finalAt;
-						} catch (NumberFormatException e) {
-							// Failed to parse, the last @ is still within the function name, so leave i at where it is							
-						}
-					}
-					
-					// Parse prefixes
-					int start = 0;
-					prefixParse: for (; start <= i; start++) {
-						char c = line.charAt(start);
-						switch (c) {
-						case '@':
-							callingConvention = FASTCALL;
-							break;
-						case '!':
-							returns = false;
-							break;
-						default:
-							break prefixParse; 
-						}
-					}
-					
-					String name = line.substring(start, i);
-					
-					//logger.debug("Registering " + name.toString() + "@" + library + " " + callingConvention + " " + stackIncrement + " " + returns);
-					registerStub(library, callingConvention, name, stackIncrement, returns);
-					
-				} /* end file reading while */
-				
-
-			} else {
-				logger.error("Cannot find definition file " + defFile.getAbsolutePath() + "!");
-			}
-			
-		} catch (IOException e) {
-			throw new RuntimeException("Error reading definition file. " + e.getMessage());
+		if (!defFile.canRead()) {
+			logger.error("Cannot find definition file " + defFile.getAbsolutePath() + "!");
+			return;
 		}
 		
+		BufferedReader in = null;
+		try {
+			in = new BufferedReader(new FileReader(defFile));
+			boolean inExports = false; 
+			String line;
+			while ((line = in.readLine()) != null) {
+				line = line.trim();
+
+				// Skip empty lines
+				if (line.length() == 0)
+					continue;
+
+				// ignore comments and preprocessor directives
+				if (line.startsWith(";") || line.startsWith("#")) continue;
+				if (line.startsWith("EXPORTS")) {
+					inExports = true;
+					continue;
+				}
+				if (!inExports) continue;
+				// parse exported function:
+
+				int callingConvention = STDCALL;
+				boolean returns = true;
+				int stackIncrement = 0;
+
+				int i = line.length();
+				if (line.length() > 4 && line.substring(i - 4, i).equals("DATA")) {
+					callingConvention = EXTERNAL_VARIABLE;
+					i -= 4;
+					while (i >= 1 && line.charAt(i - 1) == ' ')
+						i--;
+				}
+				int finalAt = line.lastIndexOf('@');
+				if (finalAt >= 0 && finalAt < i - 1) {
+					try {
+						stackIncrement = Integer.parseInt(line.substring(finalAt + 1, i));
+						i = finalAt;
+					} catch (NumberFormatException e) {
+						// Failed to parse, the last @ is still within the function name, so leave i at where it is							
+					}
+				}
+
+				// Parse prefixes
+				int start = 0;
+				prefixParse: for (; start <= i; start++) {
+					char c = line.charAt(start);
+					switch (c) {
+					case '@':
+						callingConvention = FASTCALL;
+						break;
+					case '!':
+						returns = false;
+						break;
+					default:
+						break prefixParse; 
+					}
+				}
+
+				String name = line.substring(start, i);
+
+				//logger.debug("Registering " + name.toString() + "@" + library + " " + callingConvention + " " + stackIncrement + " " + returns);
+				registerStub(library, callingConvention, name, stackIncrement, returns);
+
+			} /* end file reading while */
+
+		} catch (IOException e) {
+			throw new RuntimeException("Error reading definition file. " + e.getMessage());
+		} finally {
+			if (in != null) try {
+				in.close();
+			} catch (Exception e) {}
+		}
+
 
 	}
 
@@ -344,7 +349,7 @@ public class Win32StubLibrary implements StubProvider {
 		int rtlId = 0;
 		for (RTLStatement stmt : seq) {
 			stmt.setLabel(address, rtlId++);
-			stmt.setNextLabel(new Location(address, rtlId));
+			stmt.setNextLabel(new RTLLabel(address, rtlId));
 		}
 		seq.getLast().setNextLabel(null);
 
@@ -414,6 +419,16 @@ public class Win32StubLibrary implements StubProvider {
 				@Override
 				public String getSymbolFor(long address) {
 					return getSymbolFor(new AbsoluteAddress(address));
+				}
+
+				@Override
+				public AbsoluteAddress getAddressFor(String symbol) {
+					for (Map.Entry<String, Map<String, AbsoluteAddress>> e : activeStubs.entrySet()) {
+						AbsoluteAddress a = e.getValue().get(symbol);
+						if (a != null)
+							return a;
+					}
+					return null;
 				}
 			};
 		}

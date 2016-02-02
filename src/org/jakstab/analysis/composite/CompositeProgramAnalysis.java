@@ -49,7 +49,6 @@ public class CompositeProgramAnalysis implements ConfigurableProgramAnalysis {
 	
 	public static JOption<Boolean> ignoreCallingContext = JOption.create("ignore-context", "Allow merging of different calling contexts even with call stack analysis enabled.");
 	
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(CompositeProgramAnalysis.class);
 	
 	protected final ConfigurableProgramAnalysis[] cpas;
@@ -78,10 +77,10 @@ public class CompositeProgramAnalysis implements ConfigurableProgramAnalysis {
 	}
 
 	@Override
-	public AbstractState initStartState(Location label) {
+	public AbstractState initStartState(Location location) {
 		AbstractState[] components = new AbstractState[cpas.length];
 		for (int i=0; i<cpas.length; i++)
-			components[i] = cpas[i].initStartState(label);
+			components[i] = cpas[i].initStartState(location);
 		return createCompositeState(components);
 	}
 

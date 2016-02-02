@@ -1,6 +1,6 @@
 /*
  * ConstantPropagation.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -76,7 +76,7 @@ public class ConstantPropagation implements ConfigurableProgramAnalysis {
 	}
 
 	@Override
-	public AbstractState initStartState(Location label) {
+	public AbstractState initStartState(Location location) {
 		return NumberValuation.createInitialState();
 	}
 

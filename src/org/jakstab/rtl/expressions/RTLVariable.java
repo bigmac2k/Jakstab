@@ -1,6 +1,6 @@
 /*
  * RTLVariable.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -21,6 +21,7 @@ package org.jakstab.rtl.expressions;
 import java.util.Collections;
 import java.util.Set;
 
+import org.jakstab.analysis.ValueContainer;
 import org.jakstab.rtl.Context;
 import org.jakstab.rtl.TypeInferenceException;
 import org.jakstab.ssl.Architecture;
@@ -32,7 +33,8 @@ import org.jakstab.util.Logger;
  * 
  * @author Johannes Kinder
  */
-public class RTLVariable extends AbstractRTLExpression implements RTLExpression, Writable, Comparable<RTLVariable> {
+public class RTLVariable extends AbstractRTLExpression 
+implements RTLExpression, Writable, ValueContainer, Comparable<RTLVariable> {
 	
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(RTLVariable.class);

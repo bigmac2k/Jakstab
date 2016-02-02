@@ -1,6 +1,6 @@
 /*
  * Architecture.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -24,7 +24,7 @@ import org.jakstab.Options;
 import org.jakstab.util.Logger;
 import org.jakstab.asm.*;
 import org.jakstab.asm.x86.*;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.*;
 import org.jakstab.rtl.expressions.*;
 import org.jakstab.rtl.statements.*;
@@ -89,24 +89,18 @@ public class Architecture {
 				ExpressionFactory.createVariable("%SF", 1),
 				ExpressionFactory.createVariable("%ZF", 1)
 		}));
-		stackPointer = ExpressionFactory.createVariable("%esp", 32);
-		framePointer = ExpressionFactory.createVariable("%ebp", 32);
-		retAddrVar = ExpressionFactory.createVariable("retaddr", 32);
-		loopCounter = ExpressionFactory.createVariable("%ecx", 32);
-		stringSource = ExpressionFactory.createVariable("%esi", 32);
-		stringTarget = ExpressionFactory.createVariable("%edi", 32);
 	}
 
 	
 	private File specFile;
 	private Map<String, SSLInstruction> instructions;
 	private Map<String, List<SSLInstruction>> instrGroups;
-	private final static RTLVariable stackPointer;
-	private final static RTLVariable framePointer;
-	private final static RTLVariable loopCounter;
-	private final static RTLVariable stringSource;
-	private final static RTLVariable stringTarget;
-	private final static RTLVariable retAddrVar;
+	private final RTLVariable stackPointer;
+	private final RTLVariable framePointer;
+	private final RTLVariable loopCounter;
+	private final RTLVariable stringSource;
+	private final RTLVariable stringTarget;
+	private final RTLVariable retAddrVar;
 	private final MagicInstructions magicInstructions;
 
 	private SetOfVariables registers;
@@ -122,47 +116,56 @@ public class Architecture {
 		parseSSL(fileName);
 		magicInstructions = new MagicInstructions();
 		
-
+		stackPointer = ExpressionFactory.createVariable("%esp", 32);
+		framePointer = ExpressionFactory.createVariable("%ebp", 32);
+		retAddrVar = ExpressionFactory.createVariable("retaddr", 32);
+		loopCounter = ExpressionFactory.createVariable("%ecx", 32);
+		stringSource = ExpressionFactory.createVariable("%esi", 32);
+		stringTarget = ExpressionFactory.createVariable("%edi", 32);
 	}
 	
-	public static RTLVariable stackPointer() {
+	public RTLVariable stackPointer() {
 		return stackPointer;
 	}
 	
-	public static RTLVariable returnAddressVariable() {
+	public RTLVariable returnAddressVariable() {
 		return retAddrVar;
 	}
 	
-	public static RTLVariable framePointer() {
+	public RTLVariable framePointer() {
 		return framePointer;
 	}
 	
-	public static RTLVariable programCounter() {
+	public RTLVariable programCounter() {
 		return ExpressionFactory.pc;
 	}
 	
-	public static RTLVariable loopCounter() {
+	public RTLVariable loopCounter() {
 		return loopCounter;
 	}
 
-	public static RTLVariable stringSource() {
+	public RTLVariable stringSource() {
 		return stringSource;
 	}
 
-	public static RTLVariable stringTarget() {
+	public RTLVariable stringTarget() {
 		return stringTarget;
 	}
 
-	public static SetOfVariables getTemporaryVariables() {
+	public SetOfVariables getTemporaryVariables() {
 		return temporaryVariables;
 	}
 
-	public static SetOfVariables getStatusFlags() {
+	public SetOfVariables getStatusFlags() {
 		return statusFlags;
 	}
 	
 	public SetOfVariables getRegisters() {
 		return registers;
+	}
+	
+	public boolean isRegister(RTLVariable var) {
+		return registers.contains(var);
 	}
 
 	/**
@@ -361,7 +364,7 @@ public class Architecture {
 				logger.debug("Unassigned operand: " + instr.getOperand(i).toString());
 		}
 		if (!(sslInstr == null || instr.getOperandCount() >= sslInstr.getParameterCount())) {
-			logger.error("Instruction: " + address + ": " + instr.toString(address.getValue(), new DummySymbolFinder()));
+			logger.error("Instruction: " + address + ": " + instr.toString(address.getValue(), DummySymbolFinder.getInstance()));
 			logger.error("Template: " + sslInstr);
 			throw new RuntimeException("Too few operands in ASM instruction for SSL template");
 		}
@@ -395,7 +398,7 @@ public class Architecture {
 			// we need to label only after evaluation, as some instructions might disappear
 			for (RTLStatement stmt : instrRTL) {
 				stmt.setLabel(address, rtlId++);
-				stmt.setNextLabel(new Location(address, rtlId));
+				stmt.setNextLabel(new RTLLabel(address, rtlId));
 			}
 		} else {
 			logger.debug("Detected semantic nop during instantiation: " + address);
@@ -405,7 +408,7 @@ public class Architecture {
 			instrRTL.addFirst(nop);
 		}
 		// set next label of the last statement to fall-through instruction 
-		instrRTL.getLast().setNextLabel(new Location(new AbsoluteAddress(address.getValue() + instr.getSize()), 0));
+		instrRTL.getLast().setNextLabel(new RTLLabel(new AbsoluteAddress(address.getValue() + instr.getSize()), 0));
 		
 		// infer missing bit widths:
 		try {
@@ -413,7 +416,7 @@ public class Architecture {
 				s.inferTypes(this);
 		} catch (TypeInferenceException e) {
 			e.printStackTrace();
-			logger.error("Instruction: " + instr.toString(pcValue, new DummySymbolFinder()));
+			logger.error("Instruction: " + instr.toString(pcValue, DummySymbolFinder.getInstance()));
 			logger.error("RTL: " + instrRTL);
 			throw new RuntimeException();
 		}

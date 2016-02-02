@@ -1,6 +1,6 @@
 /*
  * ELFModule.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -46,7 +46,6 @@ public class ELFModule implements ExecutableImage {
 	
 	public static final long ELF_LOAD_ADDRESS = 0x8048000L;
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(ELFModule.class);
 
 	private Elf elf;
@@ -111,7 +110,6 @@ public class ELFModule implements ExecutableImage {
 					pltRelocs = section.loadSectionData();
 			}
 		}
-try {
 		assert (pltRelocs != null);
 		
 		int pltIdx = (int)(pltSection.sh_offset);
@@ -134,7 +132,6 @@ try {
 				pltIdx++;
 			} else {
 				instr = disasm.decodeInstruction(pltIdx);
-				assert instr != null;
 				pltIdx += instr.getSize();
 				if (!instr.getName().equals("nop")) break;
 			}
@@ -146,7 +143,7 @@ try {
 
 			// Where the function pointer is to be stored
 			AbsoluteAddress pltSlot = new AbsoluteAddress((((X86MemoryOperand)jmpToFunction.getBranchDestination())).getDisplacement());
-			//logger.debug("Address of memory trampoline is " + pltSlokernel/pistachio-ia32-0.4/i586-kernelt + 
+			//logger.debug("Address of memory trampoline is " + pltSlot + 
 			//		", file offset 0x" + Long.toHexString(getFilePointer(pltSlot)));
 			// Before loading, there's a trampoline pointer back to the following push instruction stored in this slot
 			inBuf.seek(getFilePointer(pltSlot));
@@ -194,11 +191,6 @@ try {
 				break;
 			}
 		}
-} catch (Exception e) {
-    logger.error("XXX Ignored Exception while parsing ELF: " + e);
-} catch (AssertionError e) {
-	logger.error("XXX Ignored Assertion while parsing ELF: " + e);
-}
 		
 	}
 	
@@ -344,7 +336,7 @@ try {
 
 	@Override
 	public RTLNumber readMemoryLocation(RTLMemoryLocation m) throws IOException {
-
+		
 		if (!(m.getAddress() instanceof RTLNumber)) return null;
 		
 		AbsoluteAddress va = new AbsoluteAddress((RTLNumber)m.getAddress());
@@ -370,14 +362,87 @@ try {
 		logger.debug("No value can be read from image for address " + m);
 		return null;
 	}
+	
+	protected boolean isCodeSection(int sec) {
+		return elf.sections[sec].sh_type == Elf.Section.SHT_PROGBITS;
+	}
 
 	@Override
 	public Iterator<AbsoluteAddress> codeBytesIterator() {
-		throw new UnsupportedOperationException("Code iteration not yet implemented for " + this.getClass().getSimpleName() + "!");
+		return new Iterator<AbsoluteAddress>() {
+			
+			long fp = 0;
+			int sec = -1;
+			
+			{
+				moveToNextCodeSection();
+			}
+			
+			private void moveToNextCodeSection() {
+				sec++;
+				logger.info("Iterating over code section " + elf.sections[sec].toString() + 
+						" of size " + elf.sections[sec].sh_size + " bytes.");
+				
+				while (sec < elf.sections.length && !isCodeSection(sec)) {
+					sec++;
+				}
+				if (sec >= elf.sections.length) {
+					fp = -1;
+					sec = -1;
+				} else {
+					fp = elf.sections[sec].sh_offset;
+				}
+			}
+			
+			private void moveToNextCodeByte() {
+				
+				fp++;
+				
+				if (fp >= elf.sections[sec].sh_offset + elf.sections[sec].sh_size) {
+					moveToNextCodeSection();
+					if (sec < 0) {
+						return;
+					}
+				}
+				
+			}
+
+			@Override
+			public boolean hasNext() {
+				return (fp >= 0);
+			}
+
+			@Override
+			public AbsoluteAddress next() {
+				if (!hasNext()) throw new IndexOutOfBoundsException();
+				AbsoluteAddress res = getVirtualAddress(fp);
+				moveToNextCodeByte();
+				return res;
+			}
+
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException();
+			}
+		};
 	}
+
 
 	@Override
 	public byte[] getByteArray() {
 		return inBuf.getByteArray();
+	}
+
+	@Override
+	public boolean isImportArea(AbsoluteAddress va) {
+		long a = va.getValue();
+		for (Elf.Section section : elf.sections) {
+			if (a >= section.sh_addr.getValue().longValue() && 
+					a <= section.sh_addr.getValue().longValue() + section.sh_size) {
+				return (section.toString().equals(".plt")); 
+			}
+		}
+		// Section not found
+		return false;
 	}
 }

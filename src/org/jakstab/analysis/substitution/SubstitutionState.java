@@ -1,6 +1,6 @@
 /*
  * SubstitutionState.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -25,7 +25,6 @@ import org.jakstab.cfa.StateTransformer;
 import org.jakstab.rtl.*;
 import org.jakstab.rtl.expressions.*;
 import org.jakstab.rtl.statements.*;
-import org.jakstab.ssl.Architecture;
 import org.jakstab.util.*;
 
 /**
@@ -203,23 +202,15 @@ public final class SubstitutionState implements AbstractState {
 				SubstitutionState post = new SubstitutionState(SubstitutionState.this);
 				Writable lhs = stmt.getLeftHandSide();
 				RTLExpression rhs = stmt.getRightHandSide();
-
-				logger.debug("subst: " + stmt + " rhs: " + rhs + " state: " + this.toString());
+				
 				// Evaluate righthandside
 				rhs = abstractEval(rhs).getExpression();
-				logger.debug("evaled rhs: " + rhs);
+				
 				// Remove existing substitution for the LHS
 				post.aVarVal.remove(lhs);
 				// If RHS is a pure variable, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
-					if(ExpressionSubstitutionAnalysis.unevaledFlags.getValue() 
-							&& (Architecture.getStatusFlags().contains(lhs)
-							|| Architecture.getTemporaryVariables().contains(lhs))
-							&& !Architecture.returnAddressVariable().equals(lhs)) {
-						post.setValue(lhs, new SubstitutionElement(stmt.getRightHandSide()));
-					} else {
-						post.setValue(lhs, new SubstitutionElement(rhs));
-					}
+					post.setValue(lhs, new SubstitutionElement(rhs));
 				}
 
 				// If any expression in the map uses the LHS variable, it is now invalid, so remove it
@@ -243,7 +234,7 @@ public final class SubstitutionState implements AbstractState {
 
 				if (post.aVarVal.isEmpty()) return TOP;
 				if (post.equals(SubstitutionState.this)) return SubstitutionState.this;
-				logger.debug("Post: " + post);
+				//logger.info("Post: " + post);
 				return post;
 			}
 			
@@ -267,7 +258,7 @@ public final class SubstitutionState implements AbstractState {
 				post.aVarVal.remove(lhs);
 				// If RHS is a pure memory expression, assign RHS to LHS as substitution
 				if (!containsNondet(rhs)) {
-					post.setValue(lhs, new SubstitutionElement(rhs));	
+					post.setValue(lhs, new SubstitutionElement(rhs));
 				}
 
 				// If any expression in the map uses the LHS variable, it is now invalid, so remove it
@@ -325,10 +316,6 @@ public final class SubstitutionState implements AbstractState {
 		}
 	}
 	
-	public Location getProgramCounter() {
-		return null;
-	}
-
 	public SubstitutionElement getValue(Writable v) {
 		if (isTop()) return SubstitutionElement.TOP;
 		if (isBot()) return SubstitutionElement.BOT;
@@ -443,7 +430,7 @@ public final class SubstitutionState implements AbstractState {
 	public String toString() {
 		if (isTop()) return Characters.TOP;
 		else if (isBot()) return Characters.BOT;
-		else return "Subst: " + stateId + ": " + aVarVal.toString();
+		else return stateId + ": " + aVarVal.toString();
 	}
 
 	@Override

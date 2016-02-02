@@ -1,6 +1,6 @@
 /*
  * ValuationState.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -100,8 +100,6 @@ public class ValuationState implements AbstractState {
 				for (AbstractDomainElement aAddress : e.getAddress().accept(this)) {
 						res.addAll(aAddress.readStorePowerSet(e.getBitWidth(), store));
 				}
-
-				//logger.debug("read at: " + e.getAddress() + " is: " + res);
 				return res;
 			}
 
@@ -175,7 +173,6 @@ public class ValuationState implements AbstractState {
 					res.add(result);
 
 				}
-				//logger.debug("evaluated: " + e + " to: "+ res);
 				return res;
 			}
 

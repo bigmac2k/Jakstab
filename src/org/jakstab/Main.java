@@ -1,6 +1,6 @@
 /*
  * Main.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -19,7 +19,6 @@
 package org.jakstab;
 
 import java.io.*;
-
 import java.util.*;
 
 import org.jakstab.transformation.DeadCodeElimination;
@@ -32,6 +31,8 @@ import org.jakstab.analysis.explicit.BoundedAddressTracking;
 import org.jakstab.analysis.procedures.ProcedureAnalysis;
 import org.jakstab.analysis.procedures.ProcedureState;
 import org.jakstab.asm.*;
+import org.jakstab.cfa.ControlFlowGraph;
+import org.jakstab.cfa.IntraproceduralCFG;
 import org.jakstab.cfa.Location;
 import org.jakstab.loader.*;
 import org.jakstab.rtl.expressions.ExpressionFactory;
@@ -43,28 +44,34 @@ import com.google.common.collect.SetMultimap;
 import antlr.ANTLRException;
 
 public class Main {
+
 	private static Logger logger = Logger.getLogger(Main.class);;
 
-	private final static String version = "0.8.3_arne";
+	public final static String version = "0.8.4-devel";
 
 	private static volatile Algorithm activeAlgorithm;
 	private static volatile Thread mainThread;
 	
-	public static void main(String[] args) {
-		mainThread = Thread.currentThread();
-		StatsTracker stats = StatsTracker.getInstance();
-
-		// Parse command line
-		Options.parseOptions(args);
-
+	public static void logBanner() {
 		logger.error(Characters.DOUBLE_LINE_FULL_WIDTH);
 		logger.error("   Jakstab " + version);
-		logger.error("   Copyright 2007-2012  Johannes Kinder  <johannes.kinder@epfl.ch>");
+		logger.error("   Copyright 2007-2015  Johannes Kinder  <jk@jakstab.org>");
 		logger.error("");
 		logger.error("   Jakstab comes with ABSOLUTELY NO WARRANTY. This is free software,");
 		logger.error("   and you are welcome to redistribute it under certain conditions.");
 		logger.error("   Refer to LICENSE for details.");
 		logger.error(Characters.DOUBLE_LINE_FULL_WIDTH);
+	}
+	
+	public static void main(String[] args) {
+
+		mainThread = Thread.currentThread();
+		StatsTracker stats = StatsTracker.getInstance();
+		
+		// Parse command line before first use of logger
+		Options.parseOptions(args);
+		
+		logBanner();
 
 		/////////////////////////
 		// Parse SSL file
@@ -123,32 +130,13 @@ public class Main {
 			//e.printStackTrace();
 			return;
 		}
-		logger.info("Finished parsing executable. min-addr: " + 
-				program.getMainModule().getMinAddress() + " max-addr: "+program.getMainModule().getMaxAddress());
-		
-//		FileOutputStream out;
-//		try {
-//			out = new FileOutputStream(new File("out.bin"));
-//			out.write(
-//					//	program.getMainModule().getByteArray()
-//					program.getModule(new AbsoluteAddress(0x08049c38)).getByteArray()
-//					);
-//			out.close();
-//		} catch (FileNotFoundException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+		logger.info("Finished parsing executable.");
+
 
 		// Change entry point if requested
 		if (Options.startAddress.getValue() > 0) {
 			logger.verbose("Setting start address to 0x" + Long.toHexString(Options.startAddress.getValue()));
 			program.setEntryAddress(new AbsoluteAddress(Options.startAddress.getValue()));
-		} else if(!Options.startSymbol.getValue().isEmpty()) {
-			String start = Options.startSymbol.getValue();
-			program.setEntrySymbol(start);
 		}
 
 		// Add surrounding "%DF := 1; call entrypoint; halt;" 
@@ -158,7 +146,7 @@ public class Main {
 		if (slashIdx < 0) slashIdx = baseFileName.lastIndexOf('/');
 		if (slashIdx < 0) slashIdx = -1;
 		slashIdx++;
-		stats.record(Options.mainFilename);
+		stats.record(baseFileName.substring(slashIdx));
 		stats.record(version);
 
 
@@ -195,9 +183,6 @@ public class Main {
 					System.exit(1);
 				} 
 			};
-			// yices.dll blocks for input on load for some reason, so load it before we start reading from System.in  
-			// If you are having problems with that, uncomment the next line
-			// org.jakstab.solver.yices.YicesWrapper.getVersion();
 			eclipseShutdownThread.start();
 		}
 		
@@ -270,12 +255,12 @@ public class Main {
 			logger.error( "   Runtime:                     " + String.format("%8dms", (overallEndTime - overallStartTime)));
 			logger.error( "   Instructions:                        " + String.format("%8d", program.getInstructionCount()));
 			logger.error( "   RTL Statements:                      " + String.format("%8d", program.getStatementCount()));
-			logger.error( "   CFA Edges:                           " + String.format("%8d", program.getCFA().size()));
+			logger.error( "   CFA Edges:                           " + String.format("%8d", program.getCFG().numEdges()));
 			logger.error( "   States visited:                      " + String.format("%8d", cfr.getNumberOfStatesVisited()));
 			logger.error( "   Final state space:                   " + String.format("%8d", stateCount));
 			logger.error( "   Finished normally:                   " + String.format("%8b", cfr.isCompleted()));
 			logger.error( "   Analysis result:                     " + cfr.getStatus());
-			logger.error( "   Sound:                               " + String.format("%8b", cfr.isSound()));
+			//				logger.error( "   Sound:                               " + String.format("%8b", cfr.isSound()));
 			logger.error( "   Indirect Branches (no import calls): " + String.format("%8d", indirectBranches));
 			logger.error( "   Unresolved Branches:                 " + String.format("%8d", program.getUnresolvedBranches().size()));
 			logger.debug("   FastSet conversions:                 " + String.format("%8d", FastSet.getConversionCount()));
@@ -285,35 +270,46 @@ public class Main {
 			
 			stats.record(program.getInstructionCount());
 			stats.record(program.getStatementCount());
-			stats.record(program.getCFA().size());
+			stats.record(program.getCFG().numEdges());
 			stats.record(indirectBranches);
 			stats.record(program.getUnresolvedBranches().size());
 			stats.record(cfr.getNumberOfStatesVisited());
 			stats.record(stateCount);
 			stats.record(Math.round((overallEndTime - overallStartTime)/1000.0));
 			stats.record(cfr.getStatus());
-			stats.record(Options.cpas.getValue().replace(",", ""));
+			stats.record(Options.cpas.getValue());
 			stats.record(BoundedAddressTracking.varThreshold.getValue());
 			stats.record(BoundedAddressTracking.heapThreshold.getValue());
 			stats.record(Options.basicBlocks.getValue() ? "y" : "n");
 			stats.record(Options.summarizeRep.getValue() ? "y" : "n" );
 			stats.record(BasedNumberValuation.ExplicitPrintfArgs);
 			stats.record(BasedNumberValuation.OverAppPrintfArgs);
-			stats.record(Options.startAddress.getValue());
-			stats.record(Options.startSymbol.getValue());
-			stats.record(cfr.isSound());
-			stats.record(Options.cpas.getValue());
-
+			
 			stats.print();
 
 			ProgramGraphWriter graphWriter = new ProgramGraphWriter(program);
 			
-			graphWriter.writeDisassembly(program, baseFileName + "_jak_"+Options.cpas.getValue().replace(",", "")+ ".asm");
+			graphWriter.writeDisassembly(baseFileName + "_jak.asm");
+			
+			/*if (Options.cpas.getValue().contains("v")) {
+				graphWriter.writeVpcGraph(baseFileName + "_vilcfg", cfr.getART());
+				graphWriter.writeVpcBasicBlockGraph(baseFileName + "_vcfg", cfr.getART());
+				graphWriter.writeVpcAssemblyBasicBlockGraph(baseFileName + "_asmvcfg", cfr.getART());
+			}*/
 
 			if (!(cfr.isCompleted() && Options.secondaryCPAs.getValue().length() > 0)) {
 				if (!Options.noGraphs.getValue()) {
-					graphWriter.writeControlFlowAutomaton(baseFileName + "_cfa");
-					graphWriter.writeAssemblyCFG(baseFileName + "_asmcfg");
+					graphWriter.writeControlFlowAutomaton(program.getCFG(), baseFileName + "_cfa");
+					graphWriter.writeAssemblyBasicBlockGraph(program.getCFG(), baseFileName + "_asmcfg");
+					
+					if (!Options.procedureGraph.getValue().equals("")) {
+						String proc = Options.procedureGraph.getValue();
+						ControlFlowGraph intraCFG = new IntraproceduralCFG(program.getCFG(), proc);
+						graphWriter.writeAssemblyBasicBlockGraph(intraCFG, baseFileName + "_" + proc + "_asmcfg");
+						graphWriter.writeTopologyGraph(intraCFG, baseFileName + "_" + proc + "_topo");
+					}
+					
+					//graphWriter.writeAssemblyCFG(baseFileName + "_asmcfg");
 				}
 				//if (Options.errorTrace) graphWriter.writeART(baseFileName + "_art", cfr.getART());
 			} else {
@@ -322,14 +318,12 @@ public class Main {
 				// Simplify CFA
 				logger.info("=== Simplifying CFA ===");
 				DeadCodeElimination dce;
-				long totalRemoved = 0;
-				runAlgorithm(new ExpressionSubstitution(program));
-				do {
-					dce = new DeadCodeElimination(program); 
-					runAlgorithm(dce);
-					totalRemoved += dce.getRemovalCount();
-				} while (dce.getRemovalCount() > 0);
-				logger.info("=== Finished CFA simplification, removed " + totalRemoved + " edges. ===");
+				ExpressionSubstitution subst = new ExpressionSubstitution(program.getCFG());
+				runAlgorithm(subst);
+				dce = new DeadCodeElimination(subst.getCFA(), false); 
+				runAlgorithm(dce);
+				logger.info("=== Finished CFA simplification, removed " + dce.getRemovalCount() + " edges. ===");
+				program.setCFA(dce.getCFA());
 
 				AnalysisManager mgr = AnalysisManager.getInstance();				
 				List<ConfigurableProgramAnalysis> secondaryCPAs = new LinkedList<ConfigurableProgramAnalysis>();
@@ -349,16 +343,16 @@ public class Main {
 				CPAAlgorithm cpaAlg;
 				ConfigurableProgramAnalysis[] cpaArray = secondaryCPAs.toArray(new ConfigurableProgramAnalysis[secondaryCPAs.size()]);
 				if (Options.backward.getValue()) {
-					cpaAlg = CPAAlgorithm.createBackwardAlgorithm(program, cpaArray);
+					cpaAlg = CPAAlgorithm.createBackwardAlgorithm(program.getCFG(), cpaArray);
 				} else {
-					cpaAlg = CPAAlgorithm.createForwardAlgorithm(program, cpaArray);
+					cpaAlg = CPAAlgorithm.createForwardAlgorithm(program.getCFG(), cpaArray);
 				}
 				activeAlgorithm = cpaAlg;
 				cpaAlg.run();
 				long customAnalysisEndTime = System.currentTimeMillis();
 
 				if (!Options.noGraphs.getValue())
-					graphWriter.writeControlFlowAutomaton(baseFileName + "_cfa", cpaAlg.getReachedStates().select(1));
+					graphWriter.writeControlFlowAutomaton(program.getCFG(), baseFileName + "_cfa", cpaAlg.getReachedStates().select(1));
 
 				logger.error(Characters.DOUBLE_LINE_FULL_WIDTH);
 				logger.error( "   Statistics for " + Options.secondaryCPAs.getValue());
@@ -375,7 +369,7 @@ public class Main {
 				cfr = null;
 				reached = null;
 				ProcedureAnalysis procedureAnalysis = new ProcedureAnalysis();		
-				CPAAlgorithm cpaAlg = CPAAlgorithm.createForwardAlgorithm(program, procedureAnalysis);
+				CPAAlgorithm cpaAlg = CPAAlgorithm.createForwardAlgorithm(program.getCFG(), procedureAnalysis);
 				runAlgorithm(cpaAlg);
 				reached = cpaAlg.getReachedStates().select(1);
 				Set<Location> procedures = procedureAnalysis.getCallees();
@@ -397,8 +391,7 @@ public class Main {
 					graphWriter.writeCallGraph(baseFileName + "_callgraph", callGraph);
 			}
 
-
-			stats.print();
+			 
 
 			// Kills the keypress-monitor-thread.
 			try {

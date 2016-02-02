@@ -25,10 +25,12 @@
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.asm;
+
+import org.jakstab.rtl.Context;
 
 /**
  * Top level interface for all instruction types. Defines a set of methods
@@ -65,5 +67,14 @@ public interface Instruction {
 	 * value and a SymbolFinder.
 	 */
 	public String toString(long currentPc, SymbolFinder symFinder);
+	
+	/**
+	 * Return an evaluation of this instruction, substituting and assigning values 
+	 * as specified by the context. The existing instruction is not changed.
+	 * 
+	 * @param ctx the substitution context to use
+	 * @return an evaluated copy of this instruction or this instruction, unchanged 
+	 */
+	public Instruction evaluate(Context ctx);
 	
 }

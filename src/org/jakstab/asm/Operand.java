@@ -25,10 +25,14 @@
 /* 
  * Original code for this class taken from the Java HotSpot VM. 
  * Modified for use with the Jakstab project. All modifications 
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  */
 
 package org.jakstab.asm;
+
+import org.jakstab.rtl.Context;
+import org.jakstab.rtl.expressions.ExpressionFactory;
+import org.jakstab.rtl.expressions.RTLExpression;
 
 /**
  * Operands are used as instruction parameters. An Operand is one of
@@ -38,6 +42,26 @@ public abstract class Operand {
 	
 	public String toString(long currentPc, SymbolFinder symFinder) {
 		return this.toString();
+	}
+	
+	/**
+	 * Return an evaluated copy of this operand.
+	 * 
+	 * @param ctx the context to use
+	 * @return an evaluated copy or this operand, if identical
+	 */
+	public Operand evaluate(Context ctx) {
+		RTLExpression var = ExpressionFactory.createOperand(this);
+		RTLExpression eval = var.evaluate(ctx);
+		if (var.equals(eval)) 
+			return this;
+		else {
+			Operand res = OperandFactory.createOperand(eval);
+			if (res == null)
+				return this;
+			else
+				return res;
+		}
 	}
 	
 }

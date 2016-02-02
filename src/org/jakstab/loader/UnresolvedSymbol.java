@@ -1,6 +1,6 @@
 /*
  * UnresolvedSymbol.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,7 +22,6 @@ import org.jakstab.util.Logger;
 
 public class UnresolvedSymbol {
 
-	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(UnresolvedSymbol.class);
 	
 	private final ExecutableImage module;
@@ -55,15 +54,12 @@ public class UnresolvedSymbol {
 			// offset = absolute address - PC value (PC holds address of _next_ instruction, which is 4 bytes (address size) from file pointer)
 			address = virtualAddress.getValue() - module.getVirtualAddress(fp + 4).getValue();
 		}
-		
 		logger.debug("Patching bytes at VA " + module.getVirtualAddress(fp) + ", offset 0x" + Integer.toHexString(fp) + " in byte array, " +
-				"which were " + Integer.toHexString(0x0ff & data[fp]) + " " + Integer.toHexString(0x0ff & data[fp+1]) + " " + Integer.toHexString(0x0ff & data[fp+2]) + " " + Integer.toHexString(0x0ff & data[fp+3])); 
+				"which were " + Integer.toHexString(data[fp]) + " " + Integer.toHexString(data[fp+1]) + " " + Integer.toHexString(data[fp+2]) + " " + Integer.toHexString(data[fp+3])); 
 		data[fp]     = (byte)( address        & 0xFFL);  
 		data[fp + 1] = (byte)((address >>  8) & 0xFFL);  
 		data[fp + 2] = (byte)((address >> 16) & 0xFFL);  
 		data[fp + 3] = (byte)((address >> 24) & 0xFFL);
-		logger.debug("are now " + Integer.toHexString(0x0ff & data[fp]) + " " + Integer.toHexString(0x0ff & data[fp+1]) + " " + Integer.toHexString(0x0ff & data[fp+2]) + " " + Integer.toHexString(0x0ff & data[fp+3])); 
-
 	}
 
 	public String getName() {

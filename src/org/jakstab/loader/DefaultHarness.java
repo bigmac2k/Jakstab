@@ -1,6 +1,6 @@
 /*
  * DefaultHarness.java - This file is part of the Jakstab project.
- * Copyright 2007-2012 Johannes Kinder <jk@jakstab.org>
+ * Copyright 2007-2015 Johannes Kinder <jk@jakstab.org>
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -20,9 +20,8 @@ package org.jakstab.loader;
 import org.jakstab.Program;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.asm.AbsoluteAddress;
-import org.jakstab.cfa.Location;
+import org.jakstab.cfa.RTLLabel;
 import org.jakstab.rtl.expressions.ExpressionFactory;
-import org.jakstab.rtl.expressions.RTLExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
 import org.jakstab.rtl.statements.*;
 import org.jakstab.util.Logger;
@@ -35,16 +34,10 @@ public class DefaultHarness implements Harness {
 	@SuppressWarnings("unused")
 	private static final Logger logger = Logger.getLogger(DefaultHarness.class);
 
-	public static long PROLOGUE_BASE = 0xface0000L;
-	public static long EPILOGUE_BASE = 0xfee70000L;
-	private AbsoluteAddress prologueAddress = new AbsoluteAddress(PROLOGUE_BASE);
-	private AbsoluteAddress epilogueAddress = new AbsoluteAddress(EPILOGUE_BASE);
-
-	private RTLVariable esp = Program.getProgram().getArchitecture().stackPointer(); 
-	
 	@Override
 	public void install(Program program) {
 
+		RTLVariable esp = Program.getProgram().getArchitecture().stackPointer();
 		StatementSequence seq = new StatementSequence();
 		seq.addLast(new RTLVariableAssignment(1, ExpressionFactory.createVariable("%DF", 1), ExpressionFactory.FALSE));
 		seq.addLast(new RTLAlloc(esp, MemoryRegion.STACK.toString()));
@@ -59,7 +52,8 @@ public class DefaultHarness implements Harness {
 		//seq.addLast(new RTLVariableAssignment(32, program.getArchitecture().framePointer(), program.getArchitecture().stackPointer()));
 		//seq.addLast(new RTLVariableAssignment(32, ExpressionFactory.createVariable("%ebx"), program.getArchitecture().stackPointer()));
 
-		push32(seq, ExpressionFactory.createNumber(epilogueAddress.getValue(), 32));
+		ILBuilder.getInstance().createPush(
+				ExpressionFactory.createNumber(epilogueAddress.getValue(), 32), seq);
 		seq.addLast(new RTLGoto(ExpressionFactory.createNumber(program.getStart().getAddress().getValue(), 32), RTLGoto.Type.CALL));
 		putSequence(program, seq, prologueAddress);
 		
@@ -72,20 +66,11 @@ public class DefaultHarness implements Harness {
 		putSequence(program, seq, epilogueAddress);
 	}
 	
-	private void push32(StatementSequence seq, RTLExpression value) {
-		seq.addLast(new RTLVariableAssignment(esp.getBitWidth(), esp, 
-				ExpressionFactory.createPlus(esp, ExpressionFactory.createNumber(-4, esp.getBitWidth()))
-		));
-		if (value != null) {
-			seq.addLast(new RTLMemoryAssignment(ExpressionFactory.createMemoryLocation(esp, 32), value));
-		}
-	}
-	
 	private void putSequence(Program program, StatementSequence seq, AbsoluteAddress address) {
 		int rtlId = 0;
 		for (RTLStatement stmt : seq) {
 			stmt.setLabel(address, rtlId++);
-			stmt.setNextLabel(new Location(address, rtlId));
+			stmt.setNextLabel(new RTLLabel(address, rtlId));
 		}
 		seq.getLast().setNextLabel(null);
 
