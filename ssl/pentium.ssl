@@ -995,7 +995,7 @@ INT3
 
 # Condition codes for conditional jumps
 #CONDJ := { "~%CF & ~%ZF"        , "~%CF & ~%ZF"        , "~%CF"             , "~%CF"             , 
-CONDJ := { "~(%CF | %ZF)"        , "~(%CF | ~%ZF)"        , "~%CF"             , "~%CF"             , 
+CONDJ := { "~(%CF | %ZF)"        , "~(%CF | %ZF)"        , "~%CF"             , "~%CF"             , 
            "%CF"                , "%CF"                , "%CF | %ZF"        , "%CF | %ZF"        , 
            "%CF"                , "%cx = 0"            , "%ZF"              , "%ZF"              , 
            "(%SF = %OF) & ~%ZF", "(%SF = %OF) & ~%ZF"  , "%SF = %OF"        , "%SF = %OF"        , 
