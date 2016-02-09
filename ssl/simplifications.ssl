@@ -32,14 +32,15 @@
 
 
 INEQUALITIES   x,y
-            *0*  (x < y) | (x = y) := (x <= y)
-			*0*  (x <= y) & ~(x = y) := (x < y)
-			*0*  (x <= y) & ~(y = x) := (x < y)
-			*0*  (x - y < 0) = ((0 < x - y) & (x < 0)) := (y <= x) & (y > 0)
-			*0*  (x - y < 0) = (((x < 0) & (y >= 0) & (x - y >= 0)) | ((x >= 0) & (y < 0) & (x - y < 0))) := (y <= x)
-			*0*  ((y < x) & (x < y)) := false
-			*0*  (x = false) := (~ x);
-			#*0*  ((x <u y) | (~ x)) := x;
-
-
-			#*0* (x < y) = ((y < x) & (x < y)) := (x >= y);
+  #*0* (x = y) := (x = y)                        # JE, JZ
+  #*0* ~(x = y) := ~(x = y)                      # JNE, JNZ
+  #*0* (x <u y) := (x <u y)                      # JB, JNAE, JC
+  #*0* ~(x <u y) := ~(x <u y)                    # JNB, JAE, JNC
+  *0* (x <u y) | (x = y) := (x <=u y)            # JBE, JNA
+  *0* ~((x <u y) | (x = y)) := (y <u x)          # JA, JNBE
+  *0* ((x - y) < 0) := (x < y)                   # JS
+  *0* (0 < (x - y)) := (y < x)                   # part of JO
+  *0* (x < y) ^ ((y < x) & (x < 0)) := x < y     # JL, JNGE after JS and JO replacements
+  *0* ((x < y) = ((y < x) & (x < 0))) := y <= x  # JGE, JNL after JS and JO replacements
+  #                                              # JLE, JNG implied (previous rules)
+  *0* ((y <= x) & (~ (x = y))) := y < x;         # JG, JNLE
