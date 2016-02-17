@@ -579,11 +579,13 @@ public final class BasedNumberValuation implements AbstractState {
 									NumberElement.getTop(arch.getAddressBitWidth())));
 						}
 						// STRING_LENGTH_CHECK assumptions are ecx == 0 or !(ecx == 0)
-						RTLOperation operation = (RTLOperation)stmt.getAssumption();
-						if (operation.getOperator() == Operator.EQUAL) {
-							assert operation.getOperands()[0] == arch.loopCounter();
-							assert ((RTLNumber)operation.getOperands()[1]).longValue() == 0;
-							post.setValue(arch.loopCounter(), abstractEval(operation.getOperands()[1]));
+						if(stmt.getAssumption() instanceof RTLOperation) {
+							RTLOperation operation = (RTLOperation) stmt.getAssumption();
+							if (operation.getOperator() == Operator.EQUAL) {
+								assert operation.getOperands()[0] == arch.loopCounter();
+								assert ((RTLNumber) operation.getOperands()[1]).longValue() == 0;
+								post.setValue(arch.loopCounter(), abstractEval(operation.getOperands()[1]));
+							}
 						}
 						
 						return Collections.singleton((AbstractState)post);
