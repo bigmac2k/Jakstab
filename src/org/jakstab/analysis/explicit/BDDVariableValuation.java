@@ -88,20 +88,6 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 		}
 	}
 
-	private void clearCovering(RTLVariable var) {
-		for (RTLVariable covering : ExpressionFactory.coveringRegisters(var)) {
-			aVarVal.remove(covering);
-			//clearCovering(covering);
-		}
-	}
-	
-	private void clearCovered(RTLVariable var) {
-		for (RTLVariable covered : ExpressionFactory.coveredRegisters(var)) {
-			aVarVal.remove(covered);
-			//clearCovered(covered);
-		}
-	}
-	
 	@SuppressWarnings("unchecked")
 	@Override
 	public void set(RTLVariable var, BDDSet value) {
@@ -135,9 +121,6 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 			return;
 		}
 
-		clearCovering(var);
-		clearCovered(var);
-		
 		if (value.isTop()) {
 			aVarVal.remove(var);
 		} else {
