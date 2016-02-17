@@ -1,23 +1,10 @@
 package org.jakstab.analysis.explicit;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.jakstab.Options;
 import org.jakstab.Program;
-import org.jakstab.analysis.AbstractDomainElement;
-import org.jakstab.analysis.AbstractState;
-import org.jakstab.analysis.LatticeElement;
-import org.jakstab.analysis.MemoryRegion;
-import org.jakstab.analysis.PartitionedMemory;
-import org.jakstab.analysis.Precision;
-import org.jakstab.analysis.UnknownPointerAccessException;
-import org.jakstab.analysis.ValuationState;
-import org.jakstab.analysis.VariableValuation;
+import org.jakstab.analysis.*;
 import org.jakstab.cfa.Location;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.ExpressionVisitor;
@@ -36,6 +23,7 @@ import org.jakstab.rtl.expressions.RTLNumberToLongBWCaster;
 import org.jakstab.rtl.expressions.RTLOperation;
 import org.jakstab.rtl.expressions.RTLSpecialExpression;
 import org.jakstab.rtl.expressions.RTLVariable;
+import org.jakstab.rtl.expressions.RTLVariableIsOrdered;
 import org.jakstab.rtl.expressions.Writable;
 import org.jakstab.rtl.statements.DefaultStatementVisitor;
 import org.jakstab.rtl.statements.RTLAlloc;
@@ -55,35 +43,55 @@ import org.jakstab.util.MapMap.EntryIterator;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
-import org.jakstab.util.Either;
 import org.jakstab.util.Pair;
-
-import java.util.Arrays;
 
 import cc.sven.constraint.*;
 import cc.sven.tlike.*;
+import cc.sven.equivalences.*;
 
 public class BDDState implements AbstractState {
 
-	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
+	//evidences for Scala type classes
+	private static MemoryRegionIsOrdered memoryRegionIsOrdered = new MemoryRegionIsOrdered();
+	private static RTLNumberIsOrdered rtlNumberIsOrdered = new RTLNumberIsOrdered();
+	private static RTLVariableIsOrdered rtlVariableIsOrdered = new RTLVariableIsOrdered();
+	private static RTLNumberIsDynBounded rtlNumberIsDynBounded = new RTLNumberIsDynBounded();
+	private static RTLNumberIsDynBoundedBits rtlNumberIsDynBoundedBits = new RTLNumberIsDynBoundedBits();
+	private static RTLNumberToLongBWCaster rtlNumberToLongBWCaster = new RTLNumberToLongBWCaster();
+	private static LongBWToRTLNumberCaster longBWToRTLNumberCaster = new LongBWToRTLNumberCaster();
+
+	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter, Equivalences<MemoryRegion, RTLNumber, RTLVariable> eqs) {
 		this.abstractVarTable = vartable;
 		this.abstractMemoryTable = memtable;
 		this.allocationCounter = counter;
+		this.equivalences = eqs;
 	}
 
 	protected BDDState(BDDState proto) {
 		this(new BDDVariableValuation(proto.abstractVarTable),
-				new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
-				AllocationCounter.create());
+            new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
+            AllocationCounter.create(),
+            proto.equivalences);
 	}
 
 	public BDDState() {
-		this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
+		this(new BDDVariableValuation(new BDDSetFactory()),
+            new PartitionedMemory<BDDSet>(new BDDSetFactory()),
+            AllocationCounter.create(),
+			Equivalences$.MODULE$.applyJ(memoryRegionIsOrdered, rtlNumberIsOrdered, rtlNumberIsDynBoundedBits, rtlVariableIsOrdered, rtlNumberToLongBWCaster));
 	}
 
 	private final BDDVariableValuation abstractVarTable;
 	private final PartitionedMemory<BDDSet> abstractMemoryTable;
 	private final AllocationCounter allocationCounter;
+	private Equivalences<MemoryRegion, RTLNumber, RTLVariable> equivalences;
+
+	private static Variable<MemoryRegion, RTLNumber, RTLVariable> variable(RTLVariable v) {
+		return StorageEntity$.MODULE$.variableJ(v, memoryRegionIsOrdered, rtlNumberIsOrdered, rtlNumberIsDynBoundedBits, rtlVariableIsOrdered, rtlNumberToLongBWCaster);
+	}
+	private static MemLoc<MemoryRegion, RTLNumber, RTLVariable> memLoc(MemoryRegion r, RTLNumber a) {
+		return StorageEntity$.MODULE$.memLoc(r, a, memoryRegionIsOrdered, rtlNumberIsOrdered, rtlNumberIsDynBoundedBits, rtlVariableIsOrdered, rtlNumberToLongBWCaster);
+	}
 
 	private static final Logger logger = Logger.getLogger(BDDState.class);
 
@@ -140,7 +148,7 @@ public class BDDState implements AbstractState {
 	public String toString() {
 		if(isTop()) return Characters.TOP;
 		else if(isBot()) return Characters.BOT;
-		else return "Var = " + abstractVarTable.toString() + ", " + abstractMemoryTable.toString();
+		else return "(Var = " + abstractVarTable.toString() + ", " + abstractMemoryTable.toString() + " | " + equivalences.toString() + ")";
 	}
 
 	@Override
@@ -204,8 +212,11 @@ public class BDDState implements AbstractState {
 				abstractMemoryTable.join(that.abstractMemoryTable);
 		AllocationCounter newAllocCounters = 
 				allocationCounter.join(that.allocationCounter);
+		//TODO scm check bug: is join correctly handled with respect to bitwidth? check ordering on RTLNumbers! can we change it there (JavaOrdering[RTLNumber]) without any ill effects?
+		Equivalences<MemoryRegion, RTLNumber, RTLVariable> newEquivalences =
+				equivalences.intersect(that.equivalences);
 
-		return new BDDState(newVarVal, newStore, newAllocCounters);
+		return new BDDState(newVarVal, newStore, newAllocCounters, newEquivalences);
 	}
 
 	@Override
@@ -253,7 +264,31 @@ public class BDDState implements AbstractState {
 	private void setValue(RTLVariable var, BDDSet value) {
 		abstractVarTable.set(var, value);
 	}
-	
+
+	private void addEquivalence(RTLVariable v1, RTLVariable v2) {
+		if(!v1.getName().startsWith("tmp") && !v2.getName().startsWith("tmp"))
+            equivalences = equivalences.insert(variable(v1), variable(v2));
+	}
+	private void addEquivalence(RTLVariable v, MemoryRegion r, RTLNumber n) {
+		if(!v.getName().startsWith("tmp"))
+            equivalences = equivalences.insert(variable(v), memLoc(r, n));
+	}
+	private void addEquivalence(MemoryRegion r, RTLNumber n, RTLVariable v) {
+		addEquivalence(v, r, n);
+	}
+	private void addEquivalence(MemoryRegion r1, RTLNumber n1, MemoryRegion r2, RTLNumber n2) {
+		equivalences = equivalences.insert(memLoc(r1, n1), memLoc(r2, n2));
+	}
+	private void removeEquivalenceMemoryEquivalences() {
+		equivalences = equivalences.removeAllMemLocs();
+	}
+	private void removeEquivalenceMemLoc(MemoryRegion r, RTLNumber n) {
+		equivalences = equivalences.remove(memLoc(r, n));
+	}
+	private void removeEquivalenceVariable(RTLVariable v) {
+		equivalences = equivalences.remove(variable(v));
+	}
+
 	/*private void setValue(RTLVariable var, BDDSet value, ExplicitPrecision eprec) {
 		BDDSet valueToSet;
 		switch(eprec.getTrackingLevel(var)) {
@@ -909,6 +944,28 @@ public class BDDState implements AbstractState {
 				RTLExpression rhs = stmt.getRightHandSide();
 				BDDSet evaledRhs = abstractEval(rhs);
 
+				//TODO scm improve using equivalence information (a may remain if a = rhs)
+				post.removeEquivalenceVariable(lhs);
+				logger.debug("equivalence: removed for variable " + lhs + " from " + post + " with result " + post);
+
+				if(rhs instanceof RTLVariable) {
+					RTLVariable rhsVar = (RTLVariable) rhs;
+					logger.debug("equivalence found: " + lhs + " = " + rhsVar);
+					post.addEquivalence(lhs, rhsVar);
+					logger.debug("equivalence result: " + post);
+				} else if(rhs instanceof RTLMemoryLocation) {
+					RTLMemoryLocation rhsMem = (RTLMemoryLocation) rhs;
+					//TODO FIX scm this causes double evaluation probably
+					BDDSet rhsAddress = abstractEvalAddress(rhsMem);
+					if(rhsAddress.isSingleton()) {
+						post.addEquivalence(lhs, rhsAddress.getRegion(), rhsAddress.randomElement());
+						logger.debug("equivalence found: " + lhs + " = " + rhsMem + "(" + evaledRhs + ") result: " + post);
+					} else {
+						logger.debug("equivalence NOT found (no concrete rhsAddress): " + rhsMem + "(" + rhsAddress + ")");
+					}
+				} else {
+                    logger.debug("equivalence NOT found (rhs not RTLVariable or RTLMemoryLocation)");
+                }
 
 				assert!evaledRhs.getSet().isEmpty();
 				logger.debug("assigning "+ lhs + " to " + rhs);
@@ -936,10 +993,46 @@ public class BDDState implements AbstractState {
 			@Override
 			public Set<AbstractState> visit(RTLMemoryAssignment stmt) {
 				BDDState post = copyThisState();
-				BDDSet evaledRhs = abstractEval(stmt.getRightHandSide());
+				RTLExpression rhs = stmt.getRightHandSide();
+				BDDSet evaledRhs = abstractEval(rhs);
 
 				RTLMemoryLocation m = stmt.getLeftHandSide();
 				BDDSet abstractAddress = abstractEvalAddress(m);
+
+				//TODO scm improve using equivalence information (a may remain if a = rhs)
+				logger.debug("equivalence: will operate on " + stmt);
+				if(abstractAddress.getSet().sizeGreaterThan(1000)) {
+					logger.debug("equivalence: address set too big -> removing all memory equivalences");
+					post.removeEquivalenceMemoryEquivalences();
+				} else {
+					for(Iterator<RTLNumber> it = abstractAddress.getSet().javaIterator(); it.hasNext();) {
+						RTLNumber n = it.next();
+						logger.debug("equivalence: removing for address " + n);
+						post.removeEquivalenceMemLoc(abstractAddress.getRegion(), n);
+					}
+				}
+
+				if(abstractAddress.isSingleton()) {
+					if(rhs instanceof RTLVariable) {
+						RTLVariable rhsVar = (RTLVariable) rhs;
+						post.addEquivalence(abstractAddress.getRegion(), abstractAddress.randomElement(), rhsVar);
+						logger.debug("equivalence found: " + m + "(" + abstractAddress + ") = " + rhsVar + " result: " + post);
+					} else if(rhs instanceof RTLMemoryLocation) {
+						RTLMemoryLocation rhsMem = (RTLMemoryLocation) rhs;
+						//TODO FIX scm this causes double evaluation probably
+						BDDSet rhsAddress = abstractEvalAddress(rhsMem);
+						if(rhsAddress.isSingleton()) {
+							post.addEquivalence(abstractAddress.getRegion(), abstractAddress.randomElement(), rhsAddress.getRegion(), rhsAddress.randomElement());
+							logger.debug("equivalence found: " + m + "(" + abstractAddress + ") = " + rhsMem + "(" + rhsAddress + ") result: " + post);
+						} else {
+							logger.debug("equivalence NOT found (no concrete rhsAddress): " + rhsMem + "(" + rhsAddress + ")");
+						}
+					} else {
+						logger.debug("equivalence NOT found (rhs not RTLVariable or RTLMemoryLocation)");
+					}
+				} else {
+					logger.debug("equivalence NOT found (no concrete lhs): "  + m + "(" + abstractAddress + ")");
+				}
 
 				if(!post.setMemoryValue(abstractAddress, m.getBitWidth(), evaledRhs)) {
 					logger.verbose(stmt.getLabel() + ": Cannot precisely resolve memory write to " + m + ".");
@@ -1241,7 +1334,7 @@ public class BDDState implements AbstractState {
 						try{
 							converted = buildConstraint(new TranslationState(), operation.getOperator(), Arrays.asList(operation.getOperands()));
 							logger.debug("==> Built constraint: " + converted + " for RTLAssume: " + assumption + " and State: " + BDDState.this);
-							valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), new RTLNumberIsDynBounded(), new RTLNumberIsDynBoundedBits(), new RTLNumberIsOrdered(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster());
+							valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), rtlNumberIsDynBounded, rtlNumberIsDynBoundedBits, rtlNumberIsOrdered, rtlNumberToLongBWCaster, longBWToRTLNumberCaster);
 							logger.debug("==>> Valid: " + valid);
 						} catch (Exception e) {
 							logger.error("failed to build constraint for: " + assumption + " with: " + e);
@@ -1273,13 +1366,40 @@ public class BDDState implements AbstractState {
 								BDDSet oldValue = getValue(var);
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
+								scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(variable(var));
+								if(!eqs.isEmpty()) logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+								for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
+									StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
+									if(entity instanceof MemLoc) {
+										MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
+										post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+									} else if(entity instanceof Variable) {
+										Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+										post.setValue(variable.variable(), newValue);
+									}
+								}
 								post.setValue(var, newValue);
 							} else if(exp instanceof RTLMemoryLocation) {
 								RTLMemoryLocation memLoc = (RTLMemoryLocation) exp;
-								BDDSet evaledAddress = post.abstractEval(memLoc.getAddress());
+								BDDSet evaledAddress = post.abstractEvalAddress(memLoc);
 								BDDSet oldValue = post.getMemoryValue(evaledAddress, memLoc.getBitWidth());
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
+								if(evaledAddress.isSingleton()) {
+									scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(memLoc(evaledAddress.getRegion(), evaledAddress.randomElement()));
+									if (!eqs.isEmpty())
+										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+									for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
+										StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
+										if(entity instanceof MemLoc) {
+											MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+										} else if(entity instanceof Variable) {
+											Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											post.setValue(variable.variable(), newValue);
+										}
+									}
+								}
 								post.setMemoryValue(evaledAddress, memLoc.getBitWidth(), newValue);
 							} else if(exp instanceof RTLOperation) {
 								RTLOperation op = (RTLOperation) exp;
@@ -1297,6 +1417,7 @@ public class BDDState implements AbstractState {
 											n = (RTLNumber) exps[1];
 											v = (RTLVariable) exps[0];
 										}
+										scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(variable(v));
 										logger.debug("n: "+n+" v: "+v);
 										assert n != null && v != null : "Special case restriction failure";
 										BDDSet oldValue = getValue(v);
@@ -1308,6 +1429,18 @@ public class BDDState implements AbstractState {
 												logger.debug("Value: " + value + ", nSingleton: " + nSingleton);
 												BDDSet newValue = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet()), region);
 												logger.debug("1: oldValue: " + oldValue + ", newValue: " + newValue);
+												if (!eqs.isEmpty())
+													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+												for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
+													StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
+													if(entity instanceof MemLoc) {
+														MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+													} else if(entity instanceof Variable) {
+														Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														post.setValue(variable.variable(), newValue);
+													}
+												}
 												post.setValue(v, newValue);
 											} else return Collections.emptySet();
 										} else {
@@ -1316,6 +1449,18 @@ public class BDDState implements AbstractState {
 												logger.debug("notAllowed: " + notAllowed);
 												BDDSet newValue = new BDDSet(oldValue.getSet().intersect(notAllowed.getSet().invert()), region);
 												logger.debug("2: oldValue: " + oldValue + ", newValue: " + newValue);
+												if (!eqs.isEmpty())
+													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+												for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
+													StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
+													if(entity instanceof MemLoc) {
+														MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+													} else if(entity instanceof Variable) {
+														Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														post.setValue(variable.variable(), newValue);
+													}
+												}
 												post.setValue(v, newValue);
 											} else return Collections.emptySet();
 										}
@@ -1330,8 +1475,21 @@ public class BDDState implements AbstractState {
 										constant = (RTLNumber) op.getOperands()[1];
 										var = (RTLVariable) op.getOperands()[0];
 									}
+									scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(variable(var));
 									BDDSet newValue = value.plus(BDDSet.singleton(constant).negate());
 									if(newValue.getSet().isEmpty()) return Collections.emptySet();
+									if (!eqs.isEmpty())
+										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+									for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
+										StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
+										if(entity instanceof MemLoc) {
+											MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+										} else if(entity instanceof Variable) {
+											Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											post.setValue(variable.variable(), newValue);
+										}
+									}
 									post.setValue(var, newValue);
 								}else logger.error("Constraint System: Unhandled special case (" + exp + ") during restriction");
 							} else logger.error("Constraint System: Unhandled type (" + exp.getClass() + ") during restriction");
