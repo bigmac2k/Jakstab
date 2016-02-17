@@ -238,7 +238,7 @@ public class DominatorAnalysis {
 //	 * 
 //	 * cf. K. D. Cooper, T. J. Harvey, and K. Kennedy. A simple, fast 
 //	 * dominance algorithm. In Software-Practice And Experience, 
-//	 * pages 4:1�10. John Wiley and Sons, Ltd., 2001.
+//	 * pages 4:1 10. John Wiley and Sons, Ltd., 2001.
 //	 */
 //	@SuppressWarnings("unchecked")
 //	private void computeDomimanceFrontier() {
