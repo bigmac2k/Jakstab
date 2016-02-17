@@ -137,6 +137,9 @@ public class Main {
 		if (Options.startAddress.getValue() > 0) {
 			logger.verbose("Setting start address to 0x" + Long.toHexString(Options.startAddress.getValue()));
 			program.setEntryAddress(new AbsoluteAddress(Options.startAddress.getValue()));
+		} else if(!Options.startSymbol.getValue().isEmpty()) {
+			String start = Options.startSymbol.getValue();
+			program.setEntrySymbol(start);
 		}
 
 		// Add surrounding "%DF := 1; call entrypoint; halt;" 

@@ -77,6 +77,7 @@ public class Options {
 
 	public static JOption<String> sslFilename = JOption.create("ssl", "file", jakstabHome + "/ssl/pentium.ssl", "Use <file> instead of pentium.ssl.");
 	public static JOption<Long> startAddress = JOption.create("a", "address", -1L, "Start analysis at given virtual address.");
+	public static JOption<String> startSymbol = JOption.create("sym", "symbol", "", "Start analysis at given symbol.");
 	public static JOption<Boolean> wdm = JOption.create("wdm", "WDM mode, export main function as DriverMain.");
 	public static JOption<Boolean> allEdges = JOption.create("all-edges", "Generate a true over-approximation and add edges to all possible addresses when over-approximating a jump (very slow!).");
 	public static JOption<Boolean> dumpStates = JOption.create("s", "Output all reached states after analysis.");	

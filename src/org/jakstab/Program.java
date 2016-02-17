@@ -561,4 +561,14 @@ public final class Program {
 		}
 		return res;
 	}
+
+	public AbsoluteAddress setEntrySymbol(String start) {
+		for(ExportedSymbol s : this.getSymbols()) {
+			if(s.getName().equalsIgnoreCase(start)) {
+				this.setEntryAddress(s.getAddress());
+				return s.getAddress();
+			}
+		}
+		return null;
+	}
 }
