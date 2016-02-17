@@ -2,6 +2,7 @@ package org.jakstab.analysis.explicit;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.Iterator;
 
 import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.LatticeElement;
@@ -229,10 +230,32 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 			nRegion = that.getRegion();
 		else if(that.getRegion().isTop() || that.getRegion() == this.getRegion())
 			nRegion = getRegion();
-		if(nRegion == MemoryRegion.TOP || getBitWidth() != that.getBitWidth()) {
+		if(nRegion.isTop() || getBitWidth() != that.getBitWidth()) {
 			return topBW(Math.max(getBitWidth(), that.getBitWidth()));
 		}
 		return new BDDSet(getSet().intersect(that.getSet()), nRegion);
+	}
+
+	/* need address alias taking bitwidth into account */
+	public Boolean canAlias(LatticeElement l) {
+		assert l instanceof BDDSet;
+		BDDSet that = (BDDSet) l;
+		return canAliasHelper(that) && that.canAliasHelper(this);
+	}
+	/* XXX Horribly inefficient. Consider BDD variant? Safely approximate based on application?
+	*  BDD variant would "extend" every number by the bitWidth
+	*/
+	private Boolean canAliasHelper(BDDSet that) {
+		if(!(getRegion().isTop() || that.getRegion().isTop() || getRegion() == that.getRegion())) return false;
+		for(Iterator<RTLNumber> it = getSet().javaIterator(); it.hasNext();) {
+			RTLNumber e1 = it.next();
+			long e1long = e1.longValue();
+			int e1bw = e1.getBitWidth();
+			for(int i = 0; i < e1bw; i++) {
+				if(that.getSet().contains(ExpressionFactory.createNumber(e1long + i, that.getBitWidth()))) return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
