@@ -123,6 +123,7 @@ public class IntervalAnalysis implements ConfigurableProgramAnalysis {
 			
 			@Override
 			protected AbstractState visitDefault(RTLStatement stmt) {
+				assert /*!Options.failFast.getValue()*/ false : "no visitor case found for statement: " + stmt;
 				return state;
 			}
 
