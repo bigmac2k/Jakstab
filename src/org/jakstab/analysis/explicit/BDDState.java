@@ -1367,14 +1367,17 @@ public class BDDState implements AbstractState {
 								BDDSet newValue = oldValue.meet(value);
 								if(newValue.getSet().isEmpty()) return Collections.emptySet();
 								scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(variable(var));
-								if(!eqs.isEmpty()) logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+								if(!eqs.isEmpty()) logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption + " (" + stmt.getLabel() + ")");
 								for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
 									StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
 									if(entity instanceof MemLoc) {
 										MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
-										post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+										BDDSet addr = BDDSet.singleton(memloc.region(), memloc.address());
+										logger.debug("equivalence: applying equivalence " + variable(var) + " = " + entity + " (" + stmt.getLabel() + "); old: " + post.getMemoryValue(addr, memloc.address().getBitWidth()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
+										post.setMemoryValue(addr, memloc.address().getBitWidth(), newValue);
 									} else if(entity instanceof Variable) {
 										Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+										logger.debug("equivalence: applying equivalence " + variable(var) + " = " + entity + " (" + stmt.getLabel() + "); old: " + getValue(variable.variable()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
 										post.setValue(variable.variable(), newValue);
 									}
 								}
@@ -1388,14 +1391,17 @@ public class BDDState implements AbstractState {
 								if(evaledAddress.isSingleton()) {
 									scala.collection.immutable.List<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> eqs = equivalences.lookup(memLoc(evaledAddress.getRegion(), evaledAddress.randomElement()));
 									if (!eqs.isEmpty())
-										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption + " (" + stmt.getLabel() + ")");
 									for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
 										StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
 										if(entity instanceof MemLoc) {
 											MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
-											post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+											BDDSet addr = BDDSet.singleton(memloc.region(), memloc.address());
+											logger.debug("equivalence: applying equivalence " + memLoc(evaledAddress.getRegion(), evaledAddress.randomElement()) + " = " + entity + " (" + stmt.getLabel() + "); old: " + post.getMemoryValue(addr, memloc.address().getBitWidth()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
+											post.setMemoryValue(addr, memloc.address().getBitWidth(), newValue);
 										} else if(entity instanceof Variable) {
 											Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											logger.debug("equivalence: applying equivalence " + memLoc(evaledAddress.getRegion(), evaledAddress.randomElement()) + " = " + entity + " (" + stmt.getLabel() + "); old: " + getValue(variable.variable()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
 											post.setValue(variable.variable(), newValue);
 										}
 									}
@@ -1430,14 +1436,17 @@ public class BDDState implements AbstractState {
 												BDDSet newValue = new BDDSet(oldValue.getSet().bAnd(nSingleton.getSet().bNot()).bOr(value.getSet()), region);
 												logger.debug("1: oldValue: " + oldValue + ", newValue: " + newValue);
 												if (!eqs.isEmpty())
-													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption + " (" + stmt.getLabel() + ")");
 												for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
 													StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
 													if(entity instanceof MemLoc) {
 														MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
-														post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+														BDDSet addr = BDDSet.singleton(memloc.region(), memloc.address());
+														logger.debug("equivalence: applying equivalence " + variable(v) + " = " + entity + " (" + stmt.getLabel() + "); old: " + post.getMemoryValue(addr, memloc.address().getBitWidth()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
+														post.setMemoryValue(addr, memloc.address().getBitWidth(), newValue);
 													} else if(entity instanceof Variable) {
 														Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														logger.debug("equivalence: applying equivalence " + variable(v) + " = " + entity + " (" + stmt.getLabel() + "); old: " + getValue(variable.variable()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
 														post.setValue(variable.variable(), newValue);
 													}
 												}
@@ -1450,14 +1459,17 @@ public class BDDState implements AbstractState {
 												BDDSet newValue = new BDDSet(oldValue.getSet().intersect(notAllowed.getSet().invert()), region);
 												logger.debug("2: oldValue: " + oldValue + ", newValue: " + newValue);
 												if (!eqs.isEmpty())
-													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+													logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption + " (" + stmt.getLabel() + ")");
 												for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
 													StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
 													if(entity instanceof MemLoc) {
 														MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
-														post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+														BDDSet addr = BDDSet.singleton(memloc.region(), memloc.address());
+														logger.debug("equivalence: applying equivalence " + variable(v) + " = " + entity + " (" + stmt.getLabel() + "); old: " + post.getMemoryValue(addr, memloc.address().getBitWidth()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
+														post.setMemoryValue(addr, memloc.address().getBitWidth(), newValue);
 													} else if(entity instanceof Variable) {
 														Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+														logger.debug("equivalence: applying equivalence " + variable(v) + " = " + entity + " (" + stmt.getLabel() + "); old: " + getValue(variable.variable()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
 														post.setValue(variable.variable(), newValue);
 													}
 												}
@@ -1479,14 +1491,17 @@ public class BDDState implements AbstractState {
 									BDDSet newValue = value.plus(BDDSet.singleton(constant).negate());
 									if(newValue.getSet().isEmpty()) return Collections.emptySet();
 									if (!eqs.isEmpty())
-										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption);
+										logger.debug("equivalence: found equivalences " + eqs + " for assumption " + assumption + " (" + stmt.getLabel() + ")");
 									for(scala.collection.Iterator<StorageEntity<MemoryRegion, RTLNumber, RTLVariable>> it = eqs.iterator(); it.hasNext();) {
 										StorageEntity<MemoryRegion, RTLNumber, RTLVariable> entity = it.next();
 										if(entity instanceof MemLoc) {
 											MemLoc<MemoryRegion, RTLNumber, RTLVariable> memloc = (MemLoc<MemoryRegion, RTLNumber, RTLVariable>) entity;
-											post.setMemoryValue(BDDSet.singleton(memloc.region(), memloc.address()), memloc.address().getBitWidth(), newValue);
+											BDDSet addr = BDDSet.singleton(memloc.region(), memloc.address());
+											logger.debug("equivalence: applying equivalence " + variable(var) + " = " + entity + " (" + stmt.getLabel() + "); old: " + post.getMemoryValue(addr, memloc.address().getBitWidth()).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
+											post.setMemoryValue(addr, memloc.address().getBitWidth(), newValue);
 										} else if(entity instanceof Variable) {
 											Variable<MemoryRegion, RTLNumber, RTLVariable> variable = (Variable<MemoryRegion, RTLNumber, RTLVariable>) entity;
+											logger.debug("equivalence: applying equivalence " + variable(var) + " = " + entity + " (" + stmt.getLabel() + "); old: " + getValue(var).getSet().sizeBigInt() + " new: " + newValue.getSet().sizeBigInt());
 											post.setValue(variable.variable(), newValue);
 										}
 									}
