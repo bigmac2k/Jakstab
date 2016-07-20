@@ -87,7 +87,10 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		boolean changed = false;
 		for(AbstractState state : reached) {
 			BDDState bddState = (BDDState) state;
-			changed = changed || bddState.lessOrEqual(newState);
+			if(bddState.lessOrEqual(newState)) {
+				changed = true;
+				break;
+			}
 		}
 		if(!changed)
 			return Pair.create(s, (Precision) new BDDPrecision());
