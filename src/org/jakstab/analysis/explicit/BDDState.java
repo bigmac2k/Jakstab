@@ -300,8 +300,9 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractVarTable.get(key);
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
-				logger.debug("widening variable " + key + " that had value " + value + " because of " + otherValue);
-				result.abstractVarTable.setTop(key);
+				logger.info("widening variable " + key + " that had value " + value + " because of " + otherValue);
+				//result.abstractVarTable.setTop(key);
+                value.getSet().widen_naive(otherValue.getSet(), 3); // TODO CONTINUE SET CREATE RESULT ETC
 			}
 		}
 		
@@ -313,7 +314,8 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
 			if(otherValue == null) continue;
 			if(!value.equals(otherValue)) {
-				logger.debug("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") that had value " + value + " because of " + otherValue);
+				logger.info("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") " +
+                        "that had value " + value + " because of " + otherValue);
 				result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 			}
 		}
