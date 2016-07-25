@@ -206,8 +206,11 @@ public class BDDState implements AbstractState {
 	}
 
 	/**
-	 * @param other
-	 * @return
+     * Widening operator. Variable table and abstract memory table of caller BDDState and argument BDDState are
+     * compared. For each element respectively, if region has changed, an approximation to top is made. If not, widening
+     * is called as specified for CBDDs.
+	 * @param other the other state
+	 * @return BDDState resulting from widening
 	 */
 	public BDDState widen(BDDState other) {
 		BDDState result = new BDDState(this);
