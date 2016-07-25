@@ -27,14 +27,14 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	private static final Logger logger = Logger.getLogger(BDDSet.class);
 	private IntLikeSet<Long, RTLNumber> set;
 	private MemoryRegion region;
-	
+
 	public MemoryRegion getRegion() {
 		return region;
 	}
 	public IntLikeSet<Long, RTLNumber> getSet() {
 		return set;
 	}
-	
+
 	public BDDSet(IntLikeSet<Long, RTLNumber> init) {
 		this.set = init;
 		this.region = MemoryRegion.GLOBAL;
@@ -47,24 +47,24 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		IntLikeSet<Long, RTLNumber> topSet = IntLikeSet$.MODULE$.applyJLong(bw, new RTLNumberIsDynBoundedBits(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster()).invert();
 		return new BDDSet(topSet, MemoryRegion.TOP);
 	}
-	
+
 	public static final BDDSet TRUE = singleton(ExpressionFactory.TRUE);
 	public static final BDDSet FALSE = singleton(ExpressionFactory.FALSE);
-	
+
 	@Override
 	public String toString() {
 		if(getSet().isFull())
 			return "(" + region + " | " + getBitWidth() + " | ANYNUM)";
 		return "(" + region + " | " + getBitWidth() + " | " + getSet() + ")";
 	}
-	
+
 	@Override
 	public boolean equals(Object other) {
 		if(!(other instanceof BDDSet)) return false;
 		BDDSet otherBdd = (BDDSet) other;
 		return (getRegion() == otherBdd.getRegion()) && (getSet().equals(otherBdd.getSet()));
 	}
-	
+
 	@Override
 	public Set<RTLNumber> concretize() {
 		//return getSet().java() directly?
@@ -76,7 +76,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		}
 		return getSet().java();
 	}
-	
+
 	public boolean isSingleton() {
 		if(getSet().isEmpty()) return false;
 		return getSet().remove(getSet().randomElement()).isEmpty();
@@ -94,9 +94,9 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		if(isBot() || that.isTop()) return true;
 		if(isTop() && !that.isTop()) return false;
 		return (getRegion().lessOrEqual(that.getRegion()) || getRegion() == that.getRegion())
-				&& getBitWidth() == that.getBitWidth() 
+				&& getBitWidth() == that.getBitWidth()
 				&& getSet().subsetOf(that.getSet());
-		
+
 	}
 
 	@Override
@@ -218,7 +218,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		}
 		return new BDDSet(getSet().union(that.getSet()), nRegion);
 	}
-	
+
 	/*BUG: meet of (Top, Top) (Bot, Bot) should be (Bot, Bot) not (top, ...)*/
 	public BDDSet meet(LatticeElement l) {
 		assert l instanceof BDDSet;
@@ -239,11 +239,11 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public int getBitWidth() {
 		return getSet().bits();
 	}
-	
+
 	public RTLNumber randomElement() {
 		return getSet().randomElement();
 	}
-	
+
 	public static BDDSet empty(int bw, MemoryRegion region) {
 		return new BDDSet(topBW(bw).getSet().invert(), region);
 	}
@@ -262,19 +262,19 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	public static BDDSet range(RTLNumber lo, RTLNumber hi) {
 		return BDDSet.range(MemoryRegion.GLOBAL, lo, hi);
 	}
-	
+
 	@Override
 	public AbstractDomainElement and(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
 		return topBW(set.bits());
 	}
-	
+
 	@Override
 	public AbstractDomainElement or(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
 		return topBW(set.bits());
 	}
-	
+
 	@Override
 	public AbstractDomainElement xOr(AbstractDomainElement op) {
 		// TODO Auto-generated method stub
