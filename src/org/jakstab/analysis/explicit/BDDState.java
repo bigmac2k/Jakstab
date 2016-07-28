@@ -221,14 +221,15 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractVarTable.get(key);
 			if (otherValue == null) continue;
 			if (!value.equals(otherValue)) {
-				logger.info("widening variable " + key + " that had value " + value + " because of " + otherValue);
+				logger.info(" - widening variable " + key + " that had value " + value + " because of " + otherValue);
 				if (value.getRegion() != otherValue.getRegion()) { // set to top if not of same memory region (?)
 					result.abstractVarTable.setTop(key);
 				}
 				else { // else widen
 					// result.abstractVarTable.setTop(key);
-					IntLikeSet tmp = value.getSet().widen_naive(otherValue.getSet(), 4);
-					result.abstractVarTable.set(key, new BDDSet(tmp, value.getRegion()));
+					BDDSet tmp =  new BDDSet(value.getSet().widen_naive(otherValue.getSet(), 32), value.getRegion());
+					logger.info(" - variable widen result: " + tmp);
+					result.abstractVarTable.set(key, tmp);
 				}
 			}
 		}
@@ -241,14 +242,15 @@ public class BDDState implements AbstractState {
 			BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
 			if (otherValue == null) continue;
 			if (!value.equals(otherValue)) {
-				logger.info("widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") " +
+				logger.info(" - widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") " +
 						"that had value " + value + " because of " + otherValue);
 				if (value.getRegion() != otherValue.getRegion()) { // set to top if not of same memory region (?)
 					result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 				} else { // else widen
 					// result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
-					result.abstractMemoryTable.set(region, offset, value.getBitWidth(), new BDDSet(value.getSet()
-							.widen_naive(otherValue.getSet(), 4)));
+					BDDSet tmp = new BDDSet(value.getSet().widen_naive(otherValue.getSet(), 32));
+					logger.info(" - memory widen result: " + tmp);
+					result.abstractMemoryTable.set(region, offset, value.getBitWidth(), tmp);
 				}
 			}
 		}

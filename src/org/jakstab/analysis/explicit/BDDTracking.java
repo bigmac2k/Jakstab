@@ -25,7 +25,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	public static void register(AnalysisProperties p) {
 		p.setShortHand('z');
 		p.setName("Set Address Tracking");
-		p.setDescription("Track adresses with a bdd per entry. bdd acts as a combination of set and interval.");
+		p.setDescription("Track addresses with a bdd per entry. bdd acts as a combination of set and interval.");
 		p.setExplicit(true);
 	}
 	
@@ -53,15 +53,17 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public AbstractState merge(AbstractState s1, AbstractState s2,
 			Precision precision) {
-		logger.debug("merge with precision " + precision + " on states " + s1.getIdentifier() + " and " + s2.getIdentifier());
-		//states equal? s2 is old state (comes from reachedSet)
+		logger.debug("merge with precision " + precision + " on states " + s1.getIdentifier() + " and " + s2
+				.getIdentifier());
+		// states equal? s2 is old state (comes from reachedSet)
 		if(s2.lessOrEqual(s1)) return s1;
 		BDDPrecision prec = (BDDPrecision) precision;
 		if(prec.getCount() >= threshold.getValue()) {
-			//widen
-			logger.debug("Will widen now");
+			// widen
+			logger.info("Will widen now");
 			BDDState result = ((BDDState) s2).widen((BDDState) s1).join(s1).join(s2);
-			logger.debug("s1: " + s1);logger.debug("s2: " + s2);
+			logger.debug("s1: " + s1);
+			logger.debug("s2: " + s2);
 			logger.debug("result: " + result);
 			logger.debug("check: " + CPAOperators.mergeJoin(s1, s2, precision));
 			assert(CPAOperators.mergeJoin(s1, s2, precision).lessOrEqual(result));
@@ -94,12 +96,12 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		else if(prec.getCount() >= threshold.getValue()){
 			//XXX: Widen
 			/*
-			 * go thourgh varmap and memmap, widen every element that needs it...
+			 * go through varmap and memmap, widen every element that needs it...
 			 */
-			logger.debug("Will Widen Now");
+			logger.info("Will Widen Now");
 			BDDState out = new BDDState(newState);
 			for(AbstractState state : reached) {
-				out.widen((BDDState) state);
+				out.widen((BDDState) state); // TODO does nothing. assignment? what's this even do?
 			}
 			logger.debug("Widen result: " + out);
 			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
