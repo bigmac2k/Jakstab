@@ -42,7 +42,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		return ((BDDState) state).abstractPost((RTLStatement) cfaEdge.getTransformer(), precision);
 	}
 
-	//XXX scm to we want strenghten? how could anybody be more precise than us.
+	//XXX scm do we want strenghten? how could anybody be more precise than us.
 	@Override
 	public AbstractState strengthen(AbstractState s,
 			Iterable<AbstractState> otherStates, CFAEdge cfaEdge,
@@ -53,14 +53,16 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public AbstractState merge(AbstractState s1, AbstractState s2,
 			Precision precision) {
-		logger.debug("merge with precision " + precision + " on states " + s1.getIdentifier() + " and " + s2
-				.getIdentifier());
+		//logger.info("merge with precision " + precision + " on states " + s1.getIdentifier() + " and " + s2
+		//		.getIdentifier());
 		// states equal? s2 is old state (comes from reachedSet)
 		if(s2.lessOrEqual(s1)) return s1;
 		BDDPrecision prec = (BDDPrecision) precision;
 		if(prec.getCount() >= threshold.getValue()) {
 			// widen
-			logger.info("Will widen now");
+			logger.info("merge: Will widen now");
+			//precision.incRep(); TODO CONT
+
 			BDDState result = ((BDDState) s2).widen((BDDState) s1).join(s1).join(s2);
 			logger.debug("s1: " + s1);
 			logger.debug("s2: " + s2);
@@ -81,7 +83,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	@Override
 	public Pair<AbstractState, Precision> prec(AbstractState s,
 			Precision precision, ReachedSet reached) {
-		logger.debug("prec called on state " + s.getIdentifier());
+		// logger.info("prec called on state " + s.getIdentifier());
 		logger.debug("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
 		//logger.debug("PREC reached size: " + reached.size());
 		BDDPrecision prec = (BDDPrecision) precision;
@@ -91,22 +93,24 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 			BDDState bddState = (BDDState) state;
 			changed = changed || bddState.lessOrEqual(newState);
 		}
-		if(!changed)
+		if(!changed) {
+			logger.info(" + prec: Nothing changed. How did this happen? ");
 			return Pair.create(s, (Precision) new BDDPrecision());
-		else if(prec.getCount() >= threshold.getValue()){
+		} else if(prec.getCount() >= threshold.getValue()){
 			//XXX: Widen
 			/*
 			 * go through varmap and memmap, widen every element that needs it...
 			 */
-			logger.info("Will Widen Now");
+			// logger.info(" + prec: resetting precision, since threshold has been reached");
 			BDDState out = new BDDState(newState);
-			for(AbstractState state : reached) {
-				out.widen((BDDState) state); // TODO does nothing. assignment? what's this even do?
-			}
+			//for(AbstractState state : reached) {
+			//	out.widen((BDDState) state); // TODO what was this supposed to do?
+			//}
 			logger.debug("Widen result: " + out);
 			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
 		} else
-			return Pair.create(s, (Precision) prec.inc());
+			// logger.info(" + prec: incr. precision without widening: " + (prec.getCount() + 1));
+			return Pair.create(s, (Precision) prec.incCount());
 	}
 
 	@Override

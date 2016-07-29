@@ -205,12 +205,13 @@ public class CPAAlgorithm implements Algorithm {
 			precision = precisionMap.get(unadjustedState.getLocation());
 			
 			Pair<AbstractState, Precision> pair = cpa.prec(unadjustedState, precision, reached);
-			
+
 			// Warning: The refined a is not stored in "reached", only used for successor calculation
 			AbstractState a = pair.getLeft();
 			precision = pair.getRight();
 			precisionMap.put(a.getLocation(), precision);
-			
+
+			logger.info("getLocation() returned: " + a.getLocation());
 			logger.debug("Picked from worklist: " + a.getIdentifier());
 			
 			// getTransformers() and post() might throw exceptions

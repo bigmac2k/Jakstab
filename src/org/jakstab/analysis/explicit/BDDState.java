@@ -60,9 +60,11 @@ import org.jakstab.util.Either;
 import org.jakstab.util.Pair;
 
 import java.util.Arrays;
+import java.math.BigInteger;
 
 import cc.sven.constraint.*;
 import cc.sven.tlike.*;
+import scala.math.BigInt;
 
 public class BDDState implements AbstractState {
 
@@ -70,23 +72,40 @@ public class BDDState implements AbstractState {
 	private final BDDVariableValuation abstractVarTable;
 	private final PartitionedMemory<BDDSet> abstractMemoryTable;
 	private final AllocationCounter allocationCounter;
+	private int widenPrec;
+	private static final int WIDENPRECINIT = 64;
+	private int slowWiden;
 
 	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
 		this.abstractVarTable = vartable;
 		this.abstractMemoryTable = memtable;
 		this.allocationCounter = counter;
+		this.widenPrec = WIDENPRECINIT;
+		this.slowWiden = 0;
+	}
+
+	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter,
+					 int p) {
+		this.abstractVarTable = vartable;
+		this.abstractMemoryTable = memtable;
+		this.allocationCounter = counter;
+		this.widenPrec = p;
+		this.slowWiden = 0;
 	}
 
 	protected BDDState(BDDState proto) {
 		this(new BDDVariableValuation(proto.abstractVarTable),
 				new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
-				AllocationCounter.create());
+				AllocationCounter.create(), proto.getWidenPrec());
 	}
 
 	public BDDState() {
 		this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
 	}
 
+	public int getWidenPrec() {
+		return widenPrec;
+	}
 	@Override
 	public String toString() {
 		if (isTop()) return Characters.TOP;
@@ -156,11 +175,12 @@ public class BDDState implements AbstractState {
 		AllocationCounter newAllocCounters =
 				allocationCounter.join(that.allocationCounter);
 
-		return new BDDState(newVarVal, newStore, newAllocCounters);
+		return new BDDState(newVarVal, newStore, newAllocCounters, widenPrec);
 	}
 
 	@Override
 	public Location getLocation() {
+		logger.info("??");
 		throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
 	}
 
@@ -227,7 +247,17 @@ public class BDDState implements AbstractState {
 				}
 				else { // else widen
 					// result.abstractVarTable.setTop(key);
-					BDDSet tmp =  new BDDSet(value.getSet().widen_naive(otherValue.getSet(), 32), value.getRegion());
+					BDDSet tmp =  new BDDSet(value.getSet().widen_naive(otherValue.getSet(), widenPrec), value.getRegion
+							());
+					BigInt diff = tmp.getSet().sizeBigInt().$minus(otherValue.getSet().sizeBigInt());
+					if(diff.$less(new BigInt(BigInteger.valueOf(widenPrec)))){
+						logger.info(" - cond. met: diff (" + diff +  " [" + tmp.getSet().sizeBigInt() + " - " +
+								otherValue.getSet().sizeBigInt() + "]) " + "< prec " + widenPrec);
+						// widenPrec--;
+						result.widenPrec--;
+					} else {
+						// widenPrecision = WIDENPRECINIT;
+					}
 					logger.info(" - variable widen result: " + tmp);
 					result.abstractVarTable.set(key, tmp);
 				}
@@ -248,7 +278,7 @@ public class BDDState implements AbstractState {
 					result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
 				} else { // else widen
 					// result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
-					BDDSet tmp = new BDDSet(value.getSet().widen_naive(otherValue.getSet(), 32));
+					BDDSet tmp = new BDDSet(value.getSet().widen_naive(otherValue.getSet(), 32)); // TODO CONT
 					logger.info(" - memory widen result: " + tmp);
 					result.abstractMemoryTable.set(region, offset, value.getBitWidth(), tmp);
 				}
