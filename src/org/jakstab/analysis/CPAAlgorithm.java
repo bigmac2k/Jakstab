@@ -211,7 +211,6 @@ public class CPAAlgorithm implements Algorithm {
 			precision = pair.getRight();
 			precisionMap.put(a.getLocation(), precision);
 
-			logger.info("getLocation() returned: " + a.getLocation());
 			logger.debug("Picked from worklist: " + a.getIdentifier());
 			
 			// getTransformers() and post() might throw exceptions

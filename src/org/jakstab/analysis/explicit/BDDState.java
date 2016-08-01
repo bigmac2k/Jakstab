@@ -7,18 +7,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import cc.sven.intset.IntSet;
 import org.jakstab.Options;
 import org.jakstab.Program;
-import org.jakstab.analysis.AbstractDomainElement;
 import org.jakstab.analysis.AbstractState;
 import org.jakstab.analysis.LatticeElement;
 import org.jakstab.analysis.MemoryRegion;
 import org.jakstab.analysis.PartitionedMemory;
 import org.jakstab.analysis.Precision;
 import org.jakstab.analysis.UnknownPointerAccessException;
-import org.jakstab.analysis.ValuationState;
-import org.jakstab.analysis.VariableValuation;
 import org.jakstab.cfa.Location;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.ExpressionVisitor;
@@ -56,11 +52,11 @@ import org.jakstab.util.MapMap.EntryIterator;
 import org.jakstab.util.Sets;
 import org.jakstab.util.Tuple;
 import org.jakstab.util.Logger;
-import org.jakstab.util.Either;
 import org.jakstab.util.Pair;
 
 import java.util.Arrays;
 import java.math.BigInteger;
+import java.math.BigDecimal;
 
 import cc.sven.constraint.*;
 import cc.sven.tlike.*;
@@ -68,44 +64,33 @@ import scala.math.BigInt;
 
 public class BDDState implements AbstractState {
 
+	private static final int WIDEN_PREC_INIT = 64;
+	private static final int SLOW_WIDEN_INIT = 0;
 	private static final Logger logger = Logger.getLogger(BDDState.class);
 	private final BDDVariableValuation abstractVarTable;
 	private final PartitionedMemory<BDDSet> abstractMemoryTable;
 	private final AllocationCounter allocationCounter;
-	private int widenPrec;
-	private static final int WIDENPRECINIT = 64;
-	private int slowWiden;
-
-	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter) {
-		this.abstractVarTable = vartable;
-		this.abstractMemoryTable = memtable;
-		this.allocationCounter = counter;
-		this.widenPrec = WIDENPRECINIT;
-		this.slowWiden = 0;
-	}
+	private final Map<RTLVariable, Pair<Integer, Integer>> widenVarTable; //TODO CONT
 
 	private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter,
-					 int p) {
+					 Map<RTLVariable, Pair<Integer, Integer>> widenVarTable) {
 		this.abstractVarTable = vartable;
 		this.abstractMemoryTable = memtable;
 		this.allocationCounter = counter;
-		this.widenPrec = p;
-		this.slowWiden = 0;
+		this.widenVarTable = widenVarTable;
 	}
 
 	protected BDDState(BDDState proto) {
 		this(new BDDVariableValuation(proto.abstractVarTable),
 				new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
-				AllocationCounter.create(), proto.getWidenPrec());
+				AllocationCounter.create(), proto.widenVarTable);
 	}
 
 	public BDDState() {
-		this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()), AllocationCounter.create());
+		this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()),
+				AllocationCounter.create(), new HashMap<RTLVariable, Pair<Integer, Integer>>());
 	}
 
-	public int getWidenPrec() {
-		return widenPrec;
-	}
 	@Override
 	public String toString() {
 		if (isTop()) return Characters.TOP;
@@ -175,12 +160,21 @@ public class BDDState implements AbstractState {
 		AllocationCounter newAllocCounters =
 				allocationCounter.join(that.allocationCounter);
 
-		return new BDDState(newVarVal, newStore, newAllocCounters, widenPrec);
+		Map<RTLVariable, Pair<Integer, Integer>> joinedWidenTable = new HashMap<RTLVariable, Pair<Integer, Integer>>(widenVarTable);
+		for (Map.Entry<RTLVariable, Pair<Integer, Integer>> entry : that.widenVarTable.entrySet()) {
+			RTLVariable key = entry.getKey();
+			Pair<Integer, Integer> val = entry.getValue();
+			if(!joinedWidenTable.containsKey(key)){
+				joinedWidenTable.put(key, val);
+			} else { // use smaller precision
+				if(val.getLeft() < widenVarTable.get(key).getLeft()) joinedWidenTable.replace(key, val);
+			}
+		}
+		return new BDDState(newVarVal, newStore, newAllocCounters, joinedWidenTable);
 	}
 
 	@Override
 	public Location getLocation() {
-		logger.info("??");
 		throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
 	}
 
@@ -239,6 +233,11 @@ public class BDDState implements AbstractState {
 			RTLVariable key = entry.getKey();
 			BDDSet value = entry.getValue();
 			BDDSet otherValue = other.abstractVarTable.get(key);
+			if(!widenVarTable.containsKey(key)){
+				widenVarTable.put(key, Pair.create(WIDEN_PREC_INIT, SLOW_WIDEN_INIT));
+			}
+			int widenPrec = widenVarTable.get(key).getLeft();
+			int slowWiden = widenVarTable.get(key).getRight();
 			if (otherValue == null) continue;
 			if (!value.equals(otherValue)) {
 				logger.info(" - widening variable " + key + " that had value " + value + " because of " + otherValue);
@@ -247,18 +246,35 @@ public class BDDState implements AbstractState {
 				}
 				else { // else widen
 					// result.abstractVarTable.setTop(key);
+					// if precision larger than depth of either CBDD, set precision to greater of the two depths
+					int oldWidenPrec = widenPrec;
+					int valDepth = value.getSet().set().cbdd().depth();
+					int otherValDepth = otherValue.getSet().set().cbdd().depth();
+					logger.info(" - - prec.: " + widenPrec + ", depths " + valDepth + ", " + otherValDepth);
+					if(widenPrec > valDepth && widenPrec > otherValDepth){ // does this ever happen? rm?
+						widenPrec = (valDepth > otherValDepth) ? valDepth : otherValDepth;
+						logger.info(" + set precision " + oldWidenPrec +" -> " + widenPrec + " because of depths " +
+								valDepth + ", " + otherValDepth);
+					}
 					BDDSet tmp =  new BDDSet(value.getSet().widen_naive(otherValue.getSet(), widenPrec), value.getRegion
 							());
 					BigInt diff = tmp.getSet().sizeBigInt().$minus(otherValue.getSet().sizeBigInt());
-					if(diff.$less(new BigInt(BigInteger.valueOf(widenPrec)))){
-						logger.info(" - cond. met: diff (" + diff +  " [" + tmp.getSet().sizeBigInt() + " - " +
-								otherValue.getSet().sizeBigInt() + "]) " + "< prec " + widenPrec);
-						// widenPrec--;
-						result.widenPrec--;
+					//if(diff.$less(new BigInt(BigInteger.valueOf(widenPrec)))){
+					if(diff.$less(new BigInt(new BigDecimal((Math.pow(2, 64 - widenPrec)) + 1.0).toBigInteger()))){
+						logger.info(" - slow widening cond. met: diff (" + diff +  " [ = " + tmp.getSet().sizeBigInt
+								() + " - " + otherValue.getSet().sizeBigInt() + "]) " + "< 2^(64 - prec) " + new BigInt
+								(new BigDecimal((Math.pow(2, 64 - widenPrec))).toBigInteger()));
+						// logger.info(" - slow widening cond. met: diff (" + diff +  " [ = " + tmp.getSet().sizeBigInt
+						// 		() + " - " + otherValue.getSet().sizeBigInt() + "]) " + "< prec " + widenPrec);
+						logger.info(" - - slowWiden: " + slowWiden);
+						if(slowWiden < 2) slowWiden++; else logger.info(" + slowWiden capped.");
+						widenPrec = widenPrec - slowWiden;
 					} else {
-						// widenPrecision = WIDENPRECINIT;
+						logger.info(" - - slowWiden: reset @" + slowWiden);
+						slowWiden = SLOW_WIDEN_INIT;
 					}
 					logger.info(" - variable widen result: " + tmp);
+					result.widenVarTable.replace(key, Pair.create(widenPrec, slowWiden));
 					result.abstractVarTable.set(key, tmp);
 				}
 			}
