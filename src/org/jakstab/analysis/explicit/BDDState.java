@@ -59,6 +59,7 @@ import java.math.BigInteger;
 import java.math.BigDecimal;
 import java.util.TreeMap;
 
+import cc.sven.bdd.*;
 import cc.sven.constraint.*;
 import cc.sven.tlike.*;
 import scala.math.BigInt;
@@ -74,26 +75,31 @@ public class BDDState implements AbstractState {
     private final Map<RTLVariable, Pair<Integer, Integer>> widenVarTable;
     // private final TreeMap<Pair<MemoryRegion, Long>, Integer> widenMemTable;
     private final Map<Pair<MemoryRegion, Long>, Integer> widenMemTable;
+    private Map<RTLVariable, CBDD> widenVarPrecisionTreeTable;
 
     private BDDState(BDDVariableValuation vartable, PartitionedMemory<BDDSet> memtable, AllocationCounter counter,
-                     Map<RTLVariable, Pair<Integer, Integer>> widenVarTable, Map<Pair<MemoryRegion, Long>, Integer> widenMemTable) {
+                     Map<RTLVariable, Pair<Integer, Integer>> widenVarTable, Map<Pair<MemoryRegion, Long>, Integer>
+                             widenMemTable, Map<RTLVariable, CBDD> widenVarPrecisionTreeTable) {
         this.abstractVarTable = vartable;
         this.abstractMemoryTable = memtable;
         this.allocationCounter = counter;
         this.widenVarTable = widenVarTable;
         this.widenMemTable = widenMemTable;
+        this.widenVarPrecisionTreeTable = widenVarPrecisionTreeTable;
+        // this.widenVarPrecisionTree = False$.MODULE$;
     }
+
 
     protected BDDState(BDDState proto) {
         this(new BDDVariableValuation(proto.abstractVarTable),
                 new PartitionedMemory<BDDSet>(proto.abstractMemoryTable),
-                AllocationCounter.create(), proto.widenVarTable, proto.widenMemTable);
+                AllocationCounter.create(), proto.widenVarTable, proto.widenMemTable, proto.widenVarPrecisionTreeTable);
     }
 
     public BDDState() {
         this(new BDDVariableValuation(new BDDSetFactory()), new PartitionedMemory<BDDSet>(new BDDSetFactory()),
                 AllocationCounter.create(), new HashMap<RTLVariable, Pair<Integer, Integer>>(), new
-                        HashMap<Pair<MemoryRegion, Long>, Integer>());
+                        HashMap<Pair<MemoryRegion, Long>, Integer>(), new HashMap<RTLVariable, CBDD>());
     }
 
     @Override
@@ -188,13 +194,24 @@ public class BDDState implements AbstractState {
             }
         }
 
-            return new BDDState(newVarVal, newStore, newAllocCounters, joinedWidenVarTable, joinedWidenMemTable);
+        Map<RTLVariable, CBDD> joinedWVPTT = new HashMap<RTLVariable, CBDD>(widenVarPrecisionTreeTable);
+        for(Map.Entry<RTLVariable, CBDD> entry : that.widenVarPrecisionTreeTable.entrySet()) {
+            RTLVariable key = entry.getKey();
+            CBDD val = entry.getValue();
+            if (!joinedWVPTT.containsKey(key)) {
+                joinedWVPTT.put(key, val);
+            } else {
+                joinedWVPTT.put(key, val.$amp$amp(joinedWVPTT.get(key)));
+            } // TODO make sure this works
         }
+        return new BDDState(newVarVal, newStore, newAllocCounters, joinedWidenVarTable, joinedWidenMemTable,
+                joinedWVPTT);
+    }
 
-        @Override
-        public Location getLocation () {
-            throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
-        }
+    @Override
+    public Location getLocation() {
+        throw new UnsupportedOperationException(this.getClass().getSimpleName() + " does not contain location information.");
+    }
 
     private Context getContext() {
         Context context = new Context();
@@ -250,7 +267,7 @@ public class BDDState implements AbstractState {
             RTLVariable key = entry.getKey();
             BDDSet value = entry.getValue();
             BDDSet otherValue = other.abstractVarTable.get(key);
-            if (!widenVarTable.containsKey(key)) { // create entry for widening info if not yet existant
+            if (!widenVarTable.containsKey(key)) { // create entry for widening info if not yet existent
                 widenVarTable.put(key, Pair.create(WIDEN_PREC_INIT, SLOW_WIDEN_INIT));
             }
             int widenPrec = widenVarTable.get(key).getLeft();
@@ -274,22 +291,31 @@ public class BDDState implements AbstractState {
                     // depths " +
                     //            valDepth + ", " + otherValDepth);
                     //} // I believe I don't want this
-                    BDDSet tmp = new BDDSet(value.getSet().widen_naive(otherValue.getSet(), widenPrec), value.getRegion
-                            ());
-                    if (tmp.getSet().set().cbdd().depth() > widenPrec) logger.info("!! depth " + tmp.getSet().set()
-                            .cbdd().depth() + " > prec " + widenPrec); // TODO see what is happening here - p_arithmetic, set?
+
+                    if(!widenVarPrecisionTreeTable.containsKey(key)) {
+                        widenVarPrecisionTreeTable.put(key, False$.MODULE$);
+                    }
+                    CBDD widenVarPrecisionTree = widenVarPrecisionTreeTable.get(key);
+                    logger.info(" ~ precisionTree before update: " + widenVarPrecisionTree);
+                    widenVarPrecisionTree = widenVarPrecisionTree.update_precisionTree(value.getSet().set().cbdd(),
+                            otherValue.getSet().set().cbdd());
+                    widenVarPrecisionTreeTable.put(key, widenVarPrecisionTree);
+                    logger.info(" ~ precisionTree after update: " + widenVarPrecisionTree);
+                    BDDSet tmp = new BDDSet(value.getSet().widen_precisionTree(otherValue.getSet(),
+                            widenVarPrecisionTree), value.getRegion());
 
                     logger.info(" - variable widen result: " + tmp);
-                    BigInt diff = tmp.getSet().sizeBigInt().$minus(value.getSet().sizeBigInt());
+                    BigInt diff = tmp.getSet().sizeBigInt().$minus(otherValue.getSet().sizeBigInt());
                     //if(diff.$less(new BigInt(BigInteger.valueOf(widenPrec)))){
                     // TODO consider removing difference conditional and instead constantly loosen precision
                     int smallestDepthPrec = (valDepth < otherValDepth) ? valDepth : otherValDepth;
-                    if(widenPrec < smallestDepthPrec) smallestDepthPrec = widenPrec;
+                    if (widenPrec < smallestDepthPrec) smallestDepthPrec = widenPrec;
                     if (diff.$less(new BigInt(new BigDecimal((Math.pow(2, 64 - smallestDepthPrec) + 1) /*+ 1.0*/)
                             .toBigInteger()))) {
                         logger.info(" - slow widening cond. met: diff (" + diff + " [ = " + tmp.getSet().sizeBigInt
-                                () + " - " + value.getSet().sizeBigInt() + "]) < " + new BigInt(new BigDecimal((Math
-                                .pow(2, 64 - smallestDepthPrec) + 1)).toBigInteger()) + " [ = 2^(64 - " + smallestDepthPrec + ") + 1]");
+                                () + " - " + otherValue.getSet().sizeBigInt() + "]) < " + new BigInt(new BigDecimal(
+                                (Math
+                                        .pow(2, 64 - smallestDepthPrec) + 1)).toBigInteger()) + " [ = 2^(64 - " + smallestDepthPrec + ") + 1]");
                         // logger.info(" - slow widening cond. met: diff (" + diff +  " [ = " + tmp.getSet().sizeBigInt
                         // 		() + " - " + otherValue.getSet().sizeBigInt() + "]) " + "< prec " + widenPrec);
                         logger.info(" - - slowWiden: " + slowWiden);
@@ -318,7 +344,7 @@ public class BDDState implements AbstractState {
             Pair<MemoryRegion, Long> key = Pair.create(region, offset);
             BDDSet value = iter.getValue();
             BDDSet otherValue = other.abstractMemoryTable.get(region, offset, value.getBitWidth());
-                if (!widenMemTable.containsKey(key)) { // create entry for widening info if not yet existent
+            if (!widenMemTable.containsKey(key)) { // create entry for widening info if not yet existent
                 widenMemTable.put(key, WIDEN_PREC_INIT);
             }
             int widenPrec = widenMemTable.get(key);
@@ -327,6 +353,7 @@ public class BDDState implements AbstractState {
                 logger.info(" - widening memory cell (" + region + " | " + value.getBitWidth() + " | " + offset + ") " +
                         "that had value " + value + " because of " + otherValue);
                 if (value.getRegion() != otherValue.getRegion()) { // set to top if not of same memory region (?)
+                    logger.info(" * setting to top: old " + value + ", new " + otherValue);
                     result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
                 } else { // else widen
                     // result.abstractMemoryTable.set(region, offset, value.getBitWidth(), BDDSet.topBW(value.getBitWidth()));
@@ -334,29 +361,26 @@ public class BDDState implements AbstractState {
                     int valDepth = value.getSet().set().cbdd().depth();
                     int otherValDepth = otherValue.getSet().set().cbdd().depth();
                     logger.info(" * * prec.: " + widenPrec + ", depths " + valDepth + ", " + otherValDepth);
-                    // if (widenPrec > valDepth && widenPrec > otherValDepth) { // I believe I don't want this
+                    // if (widenPrec > valDepth && widenPrec > otherValDepth) {
                     //    widenPrec = (valDepth > otherValDepth) ? valDepth : otherValDepth;
                     //    logger.info("!!!!! set precision " + oldWidenPrec + " -> " + widenPrec + " because of
                     // depths " +
                     //            valDepth + ", " + otherValDepth);
                     //}
+
                     BDDSet tmp = new BDDSet(value.getSet().widen_naive(otherValue.getSet(), widenPrec), region);
                     logger.info(" * memory widen result: " + tmp);
 
-                    if (tmp.getSet().set().cbdd().depth() > widenPrec) logger.info
-                            ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!! shouldn't happen " +
-                            " depth " + tmp.getSet().set().cbdd().depth() + " > prec " + widenPrec);
-                    // TODO see what is happening here - p_arithmetic, set?
-
-                    BigInt diff = tmp.getSet().sizeBigInt().$minus(value.getSet().sizeBigInt());
+                    BigInt diff = tmp.getSet().sizeBigInt().$minus(otherValue.getSet().sizeBigInt());
                     // TODO consider removing difference conditional and instead constantly loosen precision
                     int smallestDepthPrec = (valDepth < otherValDepth) ? valDepth : otherValDepth;
-                    if(widenPrec < smallestDepthPrec) smallestDepthPrec = widenPrec;
+                    if (widenPrec < smallestDepthPrec) smallestDepthPrec = widenPrec;
                     if (diff.$less(new BigInt(new BigDecimal((Math.pow(2, 64 - smallestDepthPrec) + 1))
-                    .toBigInteger()))) {
+                            .toBigInteger()))) {
                         logger.info(" * slow widening cond. met: diff (" + diff + " [ = " + tmp.getSet().sizeBigInt
-                                () + " - " + value.getSet().sizeBigInt() + "]) < " + new BigInt(new BigDecimal((Math
-                                .pow(2, 64 - smallestDepthPrec) + 1)).toBigInteger()) + " [ = 2^(64 - " + smallestDepthPrec + ") + 1]");
+                                () + " - " + otherValue.getSet().sizeBigInt() + "]) < " + new BigInt(new BigDecimal(
+                                (Math
+                                        .pow(2, 64 - smallestDepthPrec) + 1)).toBigInteger()) + " [ = 2^(64 - " + smallestDepthPrec + ") + 1]");
                         if (widenPrec > 1) widenPrec = widenPrec - 2;
                         else widenPrec = 0;
                     } else {
@@ -376,7 +400,7 @@ public class BDDState implements AbstractState {
 
         return result;
     }
-	
+
 	/*private void setValue(RTLVariable var, BDDSet value, ExplicitPrecision eprec) {
 		BDDSet valueToSet;
 		switch(eprec.getTrackingLevel(var)) {
