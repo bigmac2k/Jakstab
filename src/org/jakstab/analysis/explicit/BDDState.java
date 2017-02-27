@@ -1337,11 +1337,11 @@ public class BDDState implements AbstractState {
 							valid = converted.getRight().solveJLong(converted.getLeft().getValueMap(), rtlNumberIsDynBounded, rtlNumberIsDynBoundedBits, rtlNumberIsOrdered, rtlNumberToLongBWCaster, longBWToRTLNumberCaster);
 							logger.debug("==>> Valid: " + valid);
 						} catch (Exception e) {
-							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							logger.debug("failed to build constraint for: " + assumption + " with: " + e);
 							if(Options.failFast.getValue()) throw e;
 							return thisState();
 						} catch (AssertionError e) {
-							logger.error("failed to build constraint for: " + assumption + " with: " + e);
+							logger.debug("failed to build constraint for: " + assumption + " with: " + e);
 							if(Options.failFast.getValue() && Options.debug.getValue()) throw e;
 							return thisState();
 						}

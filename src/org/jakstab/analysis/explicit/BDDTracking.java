@@ -93,7 +93,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 			}
 		}
 		if(!changed)
-			return Pair.create(s, (Precision) new BDDPrecision());
+			return Pair.create(s, (Precision) prec.zero());
 		else if(prec.getCount() >= threshold.getValue()){
 			//XXX: Widen
 			/*
