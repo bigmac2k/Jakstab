@@ -307,4 +307,28 @@ public class KSet implements AbstractDomainElement {
 		return true;
 	}
 
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop();
+	}
+
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop();
+	}
+
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return getTop();
+	}
+
+	@Override
+	public AbstractDomainElement bitNegate() {
+		// TODO Auto-generated method stub
+		return getTop();
+	}
+
 }

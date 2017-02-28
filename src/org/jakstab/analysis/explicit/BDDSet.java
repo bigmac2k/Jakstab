@@ -29,6 +29,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	private IntLikeSet<Long, RTLNumber> set;
 	private MemoryRegion region;
 	
+
 	public MemoryRegion getRegion() {
 		return region;
 	}
@@ -44,6 +45,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		this.set = initset;
 		this.region = initregion;
 	}
+
 	public static BDDSet topBW(int bw) {
 		IntLikeSet<Long, RTLNumber> topSet = IntLikeSet$.MODULE$.applyJLong(bw, new RTLNumberIsDynBoundedBits(), new RTLNumberToLongBWCaster(), new LongBWToRTLNumberCaster()).invert();
 		return new BDDSet(topSet, MemoryRegion.TOP);
@@ -284,5 +286,28 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 	}
 	public static BDDSet range(RTLNumber lo, RTLNumber hi) {
 		return BDDSet.range(MemoryRegion.GLOBAL, lo, hi);
+	}
+
+	@Override
+	public AbstractDomainElement and(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
+
+	@Override
+	public AbstractDomainElement or(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
+
+	@Override
+	public AbstractDomainElement xOr(AbstractDomainElement op) {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
+	}
+	@Override
+	public AbstractDomainElement bitNegate() {
+		// TODO Auto-generated method stub
+		return topBW(set.bits());
 	}
 }

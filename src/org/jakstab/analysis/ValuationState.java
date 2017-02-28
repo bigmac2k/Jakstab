@@ -166,6 +166,35 @@ public class ValuationState implements AbstractState {
 						break;
 					}
 
+					case AND:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.and(result);
+						}
+						break;
+
+					case OR:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.or(result);
+						}
+						break;
+
+					case XOR:
+						result = aOperands.get(0);
+						for (int i=1; i<aOperands.size(); i++) {
+							AbstractDomainElement aOp = aOperands.get(i);
+							result = aOp.xOr(result);
+						}
+						break;
+					
+					case NEG:
+						result = aOperands.get(0);
+						result = result.bitNegate();
+						break;
+					
 					default:
 						result = valueFactory.createTop(bitWidth);
 					}
@@ -272,7 +301,7 @@ public class ValuationState implements AbstractState {
 			for (AbstractDomainElement el : abstractEvalPowerSet(expressions[i])) {
 				Set<RTLNumber> c = el.concretize();
 				
-				if (c == RTLNumber.ALL_NUMBERS) {
+				if (c.size() == 1 && c.iterator().next() == null /*c == RTLNumber.ALL_NUMBERS*/) {
 					if (expressions[i].getBitWidth() == 1) {
 						// bitWidth is 1, we can just force 1 and 0 here
 						concreteValues.add(ExpressionFactory.TRUE);

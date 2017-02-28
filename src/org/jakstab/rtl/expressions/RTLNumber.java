@@ -266,4 +266,27 @@ public class RTLNumber extends AbstractRTLExpression implements RTLExpression, A
 	public boolean lessOrEqual(LatticeElement l) {
 		return equals(l);
 	}
+
+	@Override
+	public RTLNumber and(AbstractDomainElement op) {
+		RTLNumber other = (RTLNumber) op;
+		return ExpressionFactory.createNumber(value & other.value, Math.max(bitWidth, other.bitWidth));
+	}
+
+	@Override
+	public RTLNumber or(AbstractDomainElement op) {
+		RTLNumber other = (RTLNumber) op;
+		return ExpressionFactory.createNumber(value | other.value, Math.max(bitWidth, other.bitWidth));
+	}
+
+	@Override
+	public RTLNumber xOr(AbstractDomainElement op) {
+		RTLNumber other = (RTLNumber) op;
+		return ExpressionFactory.createNumber(value ^ other.value, Math.max(bitWidth, other.bitWidth));
+	}
+
+	@Override
+	public RTLNumber bitNegate() {
+		return ExpressionFactory.createNumber(~value, bitWidth);
+	}
 }

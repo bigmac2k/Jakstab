@@ -20,6 +20,8 @@ package org.jakstab.analysis.intervals;
 import java.util.*;
 
 import org.jakstab.analysis.*;
+import org.jakstab.analysis.intervals.util.BitwiseOperations;
+import org.jakstab.analysis.intervals.util.Interval;
 import org.jakstab.rtl.BitVectorType;
 import org.jakstab.rtl.expressions.ExpressionFactory;
 import org.jakstab.rtl.expressions.RTLNumber;
@@ -188,7 +190,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	@Override
 	public Set<RTLNumber> concretize() {
 		// magic max size for jump tables
-		if (getRegion() != MemoryRegion.GLOBAL || size() > MAX_CONCRETIZATION_SIZE) {
+		if (getRegion() != MemoryRegion.GLOBAL || size() > MAX_CONCRETIZATION_SIZE || isTop()) {
 			return RTLNumber.ALL_NUMBERS;
 		}
 		Set<RTLNumber> result = new FastSet<RTLNumber>();
@@ -299,8 +301,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	 */
 	@Override
 	public String toString() {
-		if (isTop()) return Characters.TOP;
-		if (isBot()) return Characters.BOT;
+		if (isTop()) return Characters.TOP + bitWidth;
+		if (isBot()) return Characters.BOT + bitWidth;
 		StringBuilder s = new StringBuilder();
 		if (region != MemoryRegion.GLOBAL) 
 			s.append(region).append(":");
@@ -308,7 +310,7 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		s.append(stride);
 		s.append('[');
 
-		if (leftOpen()) { 
+		if (leftOpen() && size() != 1) {
 			s.append(Characters.TOP); 
 		} else {
 			s.append(left);
@@ -324,7 +326,8 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 			}
 			s.append(']');
 		}
-		return s.toString(); 
+		s.append(bitWidth);
+		return s.toString();
 	}
 
 	/*
@@ -617,6 +620,57 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 		}
 	}
 
+	@Override
+	public IntervalElement and(AbstractDomainElement op) {
+		System.out.println("Computing AND");
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.AND(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
+	}
+
+	@Override
+	public IntervalElement or(AbstractDomainElement op) {
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.OR(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
+	}
+
+	@Override
+	public IntervalElement xOr(AbstractDomainElement op) {
+		IntervalElement other = (IntervalElement) op;
+		assert bitWidth == other.bitWidth;
+		if(isBot() || other.isBot()) return getBot(bitWidth);
+		MemoryRegion newRegion = region.join(other.region);
+		if (newRegion.isTop()) return getTop(bitWidth); //LookUP
+
+
+		Interval newBounds = BitwiseOperations.XOR(left, right, other.left, other.right);
+		//new stride is always 1
+		return new IntervalElement(newRegion, newBounds.l(), newBounds.g(), 1, bitWidth);
+	}
+
+	@Override
+	public IntervalElement bitNegate() {
+		Interval res = BitwiseOperations.BIT_NEGATE(left, right);
+		if(isBot()) return getBot(bitWidth);
+		//may keep stride
+		return new IntervalElement(region, res.l(), res.g(), 1, bitWidth);
+	}
+
 	public IntervalElement openLeft() {
 		return new IntervalElement(getRegion(), minBW(getBitWidth()), getRight(), 1, getBitWidth());
 	}
@@ -629,6 +683,4 @@ public class IntervalElement implements AbstractDomainElement, BitVectorType, It
 	public static long minBW(int bitWidth) {
 		return -maxBW(bitWidth) - 1;
 	}
-
-
 }

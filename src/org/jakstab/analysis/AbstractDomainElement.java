@@ -104,6 +104,33 @@ public interface AbstractDomainElement extends AbstractValue {
 	 */
 	public AbstractDomainElement zeroFill(int first, int last);
 	
+	/**
+	 * Bitwise AND of two {@link AbstractDomainElement}s.
+	 * @param op
+	 * @return
+	 */
+	public AbstractDomainElement and(AbstractDomainElement op);
+	
+	/**
+	 * Bitwise OR of two {@link AbstractDomainElement}s.
+	 * @param op
+	 * @return
+	 */
+	public AbstractDomainElement or(AbstractDomainElement op);
+	
+	/**
+	 * Bitwise XOR of two {@link AbstractDomainElement}s.
+	 * @param op
+	 * @return
+	 */
+	public AbstractDomainElement xOr(AbstractDomainElement op);
+	
+	/**
+	 * Computes the bitwise negation of the element.
+	 * @return
+	 */
+	public AbstractDomainElement bitNegate();
+	
 	@Override
 	public AbstractDomainElement join(LatticeElement l);
 	

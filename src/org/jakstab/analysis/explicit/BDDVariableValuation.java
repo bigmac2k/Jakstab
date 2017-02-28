@@ -73,13 +73,11 @@ public class BDDVariableValuation extends VariableValuation<BDDSet> {
 				if(parentVal.isTop()) 
 					return valueFactory.createTop(var.getBitWidth());
 				
-
 				logger.debug("asParent: " + asParent + " parent: " + parent + " parentVal: " + parentVal);
 
-				
 				int first = ((RTLNumber)asParent.getFirstBitIndex()).intValue();
 				int last = ((RTLNumber)asParent.getLastBitIndex()).intValue();
-				IntLikeSet<Long, RTLNumber> ret = parentVal.getSet().bitExtract(last,first);
+				IntLikeSet<Long, RTLNumber> ret = parentVal.getSet().bitExtract(last,first); // TODO observe
 				logger.debug("first: "+first +" last: "+last+" extractedValue: " + ret);
 				return new BDDSet(ret,parentVal.getRegion());
 			}
