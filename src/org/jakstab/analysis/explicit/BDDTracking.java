@@ -96,10 +96,6 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 				break;
 			}
 		}
-<<<<<<< HEAD
-		if(!changed)
-			return Pair.create(s, (Precision) prec.zero());
-		else if(prec.getCount() >= threshold.getValue()){
 		if(!changed) {
 			logger.info(" + prec: Nothing changed. How did this happen? ");
 			return Pair.create(s, (Precision) new BDDPrecision());
