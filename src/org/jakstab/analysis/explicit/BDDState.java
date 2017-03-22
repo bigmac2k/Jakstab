@@ -958,9 +958,6 @@ public class BDDState implements AbstractState {
 					break;
 				case MUL:
 					check = new CheckResult(e, abstractOperands);
-					//TODO scm remove
-					final int prec = 5;
-					final int maxk = 2*prec*BDDTracking.threshold.getValue();
 					if(check.getTop()) {
 						logger.debug("abstractEval(" + e + ") == TOP on State: " + BDDState.this);
 						return BDDSet.topBW(e.getBitWidth());
@@ -981,7 +978,7 @@ public class BDDState implements AbstractState {
 									}
 								res = tmp;
 							} else {*/
-								res = res.mul(maxk, prec, op);
+								res = res.times(op);
 							//}
 						}
 						logger.debug("MUL: " + res);
