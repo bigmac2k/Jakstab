@@ -63,7 +63,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 			logger.info("merge: Will widen now");
 			//precision.incRep(); TODO CONT
 
-			BDDState result = ((BDDState) s2).widen((BDDState) s1).join(s1).join(s2);
+            BDDState result = ((BDDState) s2).widen((BDDState) s1, (BDDPrecision) precision).join(s1).join(s2);
 			logger.debug("s1: " + s1);
 			logger.debug("s2: " + s2);
 			logger.debug("result: " + result);
