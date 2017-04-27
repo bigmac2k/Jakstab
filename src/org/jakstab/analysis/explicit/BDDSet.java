@@ -74,7 +74,7 @@ public class BDDSet implements AbstractDomainElement, BitVectorType {
 		//TODO SCM : fix - what if set is full for e.g. boolean?
 		if(getSet().isFull())
 			return RTLNumber.ALL_NUMBERS;
-		if(getSet().sizeGreaterThan(10*BDDTracking.threshold.getValue())) {
+		if(getSet().sizeGreaterThan(BDDTracking.concThreshold.getValue())) {
 			logger.info("concretizing possibly large set: " + this);
 		}
 		return getSet().java();

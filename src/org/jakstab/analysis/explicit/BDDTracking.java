@@ -30,6 +30,7 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 	}
 	
 	public static JOption<Integer> threshold = JOption.create("bdd-threshold", "k", 3, "Sets the threshold used in merge and prec.");
+	public static JOption<Integer> concThreshold = JOption.create("bdd-concthreshold", "c", 1000, "Maximum number of concretized values.");
 
 	public BDDTracking() {}
 	
