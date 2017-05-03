@@ -81,41 +81,13 @@ public class BDDTracking implements ConfigurableProgramAnalysis {
 		return CPAOperators.stopJoin(s, reached, precision);
 	}
 
-	@Override
-	public Pair<AbstractState, Precision> prec(AbstractState s,
-			Precision precision, ReachedSet reached) {
-		// logger.info("prec called on state " + s.getIdentifier());
-		logger.debug("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
-		//logger.debug("PREC reached size: " + reached.size());
-		BDDPrecision prec = (BDDPrecision) precision;
-		BDDState newState = (BDDState) s;
-		boolean changed = false;
-		for(AbstractState state : reached) {
-			BDDState bddState = (BDDState) state;
-			if(bddState.lessOrEqual(newState)) {
-				changed = true;
-				break;
-			}
-		}
-		if(!changed) {
-			logger.info(" + prec: Nothing changed. How did this happen? ");
-			return Pair.create(s, (Precision) new BDDPrecision());
-		} else if(prec.getCount() >= threshold.getValue()){
-			//XXX: Widen
-			/*
-			 * go through varmap and memmap, widen every element that needs it...
-			 */
-			// logger.info(" + prec: resetting precision, since threshold has been reached");
-			BDDState out = new BDDState(newState);
-			//for(AbstractState state : reached) {
-			//	out.widen((BDDState) state); // TODO what was this supposed to do?
-			//}
-			logger.debug("Widen result: " + out);
-			return Pair.create((AbstractState) out, (Precision) new BDDPrecision());
-		} else
-			// logger.info(" + prec: incr. precision without widening: " + (prec.getCount() + 1));
-			return Pair.create(s, (Precision) prec.incCount());
-	}
+    @Override
+    public Pair<AbstractState, Precision> prec(AbstractState s, Precision precision, ReachedSet reached) {
+        logger.debug("prec((" + s + "), (" + precision + "), (" + reached + ")) called");
+        // do nothing
+
+        return Pair.create(s, ((BDDPrecision) precision).incCount());
+    }
 
 	@Override
 	public AbstractState initStartState(Location label) {
