@@ -1,4 +1,4 @@
-Jakstab
+Jakstab with BDDStab Plug-In
 =======
 
 Overview
@@ -26,6 +26,11 @@ in Johannes Kinder`s dissertation:
 * Johannes Kinder: Static Analysis of x86 Executables. Technische Universität 
 Darmstadt, 2010. [PDF](http://nbn-resolving.de/urn:nbn:de:tuda-tuprints-23388)
 
+A detailed description of the BDDStab Plug-In is available in:
+
+* A non-convex abstract domain for the value analysis of binaries.
+SANER, 2015 [PDF](http://www.sts.tu-harburg.de/projects/BDDstab/bddstab.pdf)
+
 
 Running Jakstab
 ---------------
@@ -48,6 +53,10 @@ research prototype, so all interfaces are likely to change with new
 versions without further notice. Documentation is still sparse, but
 will hopefully improve over time.
 
+  `jakstab -m input/jumptable.exe --cpa zf`
+  
+  Will use the BDDStab plug-in to provide value analysis.
+
 Outputs
 -------
 
@@ -68,6 +77,7 @@ The analyses (CPAs) that should be working correctly are:
 * Forward Expression Substitution (f)
 * Interval Analysis (i)
 * K-Set Analysis (k)
+* BDD-Based Value Analysis (BDDStab) (z)
 
 Publications
 ------------
