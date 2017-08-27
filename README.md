@@ -26,6 +26,9 @@ in Johannes Kinder`s dissertation:
 * Johannes Kinder: Static Analysis of x86 Executables. Technische Universität 
 Darmstadt, 2010. [PDF](http://nbn-resolving.de/urn:nbn:de:tuda-tuprints-23388)
 
+BDDStab is a Jakstab plug-in, providing a BDD-based integer value analysis to
+resolve branch targets.
+It's heavy lifting is implemented in a [library](https://github.com/bigmac2k/integerset-bdd) that is written in Scala.
 A detailed description of the BDDStab Plug-In is available in:
 
 * A non-convex abstract domain for the value analysis of binaries.
