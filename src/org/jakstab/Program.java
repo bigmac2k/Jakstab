@@ -555,7 +555,7 @@ public final class Program {
 						}
 					}
 					res++;
-					//logger.verbose(entry.getKey() + "\t" + getInstructionString(entry.getKey()));
+					logger.verbose(entry.getKey() + "\t" + getInstructionString(entry.getKey()));
 				}
 			}
 		}

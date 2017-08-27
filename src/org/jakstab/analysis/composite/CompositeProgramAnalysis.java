@@ -153,7 +153,7 @@ public class CompositeProgramAnalysis implements ConfigurableProgramAnalysis {
 		if (expressionSubstitutionIndex >= 0) {
 			RTLStatement subst = ExpressionSubstitution.substituteStatement(
 					((RTLStatement)cfaEdge.getTransformer()), (SubstitutionState)c.getComponent(expressionSubstitutionIndex));
-			System.out.println("about to call CFAEdge with " + subst);
+			//System.out.println("about to call CFAEdge with " + subst);
 			cfaEdge = new CFAEdge(cfaEdge.getSource(), cfaEdge.getTarget(), subst);
 		}
 		
